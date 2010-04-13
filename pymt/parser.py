@@ -6,7 +6,7 @@ Used specially for CSS
 
 __all__ = ['parse_image', 'parse_color', 'parse_int', 'parse_float',
            'parse_string', 'parse_bool', 'parse_int2',
-           'parse_float4']
+           'parse_float4', 'parse_borderimage']
 
 import re
 from pymt.core.image import Image
@@ -97,6 +97,20 @@ def parse_float4(text):
     elif len(value) > 4:
         raise Exception('Too much value in %s' % text)
     return value
+
+def parse_borderimage(text):
+    '''Parse a string to a image + 4 int
+
+    >>> parse_borderimage('"myimage.png" 1 4 2 3')
+    (<image object>, (1, 4, 2, 3))
+    '''
+    value = text.strip().split()
+    if len(value) != 5:
+        return Exception('Invalid format borderimage for %s' % text)
+    image, value = value[0], value[1:]
+    image = parse_image(image)
+    borders = map(lambda x: parse_float(x), value)
+    return image, borders
 
 parse_int = int
 parse_float = float

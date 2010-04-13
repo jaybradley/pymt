@@ -10,12 +10,9 @@ from colors import set_color
 from pymt.cache import Cache
 from statement import GlDisplayList, gx_color
 from OpenGL.GL import *
-from pymt.core.svg import Svg
-
 
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.cssrect', limit=100, timeout=60)
-
 
 def drawCSSRectangle(pos=(0,0), size=(100,100), style={}, prefix=None, state=None):
     '''Draw a rectangle with CSS
@@ -36,7 +33,59 @@ def drawCSSRectangle(pos=(0,0), size=(100,100), style={}, prefix=None, state=Non
 
     '''
 
-    bg_image = style.get('bg-image-'+str(state))
+    # CSS3 border image implementation
+    # this take the lead of everything else if exist.
+    border_image = style.get('border-image-' + str(state))
+    if not border_image:
+        border_image = style.get('border-image')
+    if border_image:
+        image, borders = border_image
+        bt, br, bb, bl = borders
+        texture = image.texture
+        iw, ih = image.size
+        t0, t1, t2, t3, t4, t5, t6, t7 = texture.tex_coords
+        tbt, tbr, tbb, tbl = bt / float(ih), br / float(iw), bb / float(ih), bl / float(iw)
+        w, h = size
+        x, y = pos
+
+        # corners (top left, top right, bottom left, bottom right
+        drawTexturedRectangle(texture=texture,
+            pos=(x, y + h - bt), size=(bl, bt),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x + w - br, y + h - bt), size=(br, bt),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x, y), size=(bl, bb),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x + w - br, y), size=(br, bb),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+
+        # borders (top, bottom, left, right)
+        drawTexturedRectangle(texture=texture,
+            pos=(x + bl, y + h - bt), size=(w - bl - br, bt),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x + bl, y), size=(w - bl - br, bb),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x, y + bb), size=(bl, h - bt - bb),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        drawTexturedRectangle(texture=texture,
+            pos=(x + w - br, y + bb), size=(br, h - bt - bb),
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+
+        # content
+        pos = (x + bl, y + bb)
+        size = (w - bl - br, h - bb - bt)
+        imtx, imty = pos[0] / iw, pos[1] / ih
+        drawTexturedRectangle(texture=texture, pos=pos, size=size,
+            tex_coords=(t0, t1, t2, t3, t4, t5, t6, t7))
+        return
+
+
+    bg_image = style.get('bg-image-' + str(state))
     if not bg_image:
         bg_image = style.get('bg-image')
 
