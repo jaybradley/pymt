@@ -15,7 +15,7 @@ class MyObject(MTWidget):
         self.line.points += (map(lambda x: random.random() * 600, xrange(2)))
         self.line.draw()
         set_color(.2)
-        drawLabel(label='%d' % len(self.line.data), font_size=35, pos=(50, 50),
+        drawLabel(label='%d' % self.line.count, font_size=35, pos=(50, 50),
                  center=False)
 
 runTouchApp(MyObject())
