@@ -9,7 +9,6 @@ from OpenGL.GL import GL_RGB
 from abc import ABCMeta, abstractmethod
 from .. import core_select_lib
 from ...baseobject import BaseObject
-from ...graphx import set_color, drawRectangle, drawTexturedRectangle, drawLabel
 
 class CameraBase(BaseObject):
     '''Abstract Camera Widget class.

@@ -10,12 +10,9 @@ from colors import set_color
 from pymt.cache import Cache
 from statement import GlDisplayList, gx_color
 from OpenGL.GL import *
-from pymt.core.svg import Svg
-
 
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.cssrect', limit=100, timeout=60)
-
 
 def drawCSSRectangle(pos=(0,0), size=(100,100), style={}, prefix=None, state=None):
     '''Draw a rectangle with CSS

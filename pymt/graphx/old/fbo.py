@@ -280,7 +280,7 @@ if 'PYMT_DOC' not in os.environ:
 
     def __pymt_configure_fbo():
 
-        from .. import pymt_config
+        from pymt import pymt_config
 
         # decide what to use
         fbo_config = pymt_config.get('graphics', 'fbo')
