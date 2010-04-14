@@ -7,7 +7,7 @@ __all__ = ('Svg',)
 from pymt.core import core_register_libs
 from pymt.baseobject import BaseObject
 from pymt.cache import Cache
-from pymt.graphx.statement import gx_matrix
+from pymt.graphx import gx_matrix
 from OpenGL.GL import glTranslate, glScale
 
 Cache.register('pymt.svg', limit=50)
