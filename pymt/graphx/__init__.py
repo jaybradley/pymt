@@ -90,7 +90,7 @@ class Graphic(object):
 
         super(Graphic, self).__init__()
 
-        self._vbo = vbo.VBO(array('f'),
+        self._vbo = vbo.VBO('',
                             usage=kwargs.get('usage'),
                             target=kwargs.get('target'))
         self._format = []
