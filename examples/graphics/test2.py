@@ -13,7 +13,6 @@ class MyObject(MTWidget):
         self.p = p
 
     def draw(self):
-        x, y = map(lambda x: random.random() * 600, xrange(2))
         for m in self.p:
             x, y = map(lambda x: random.random() * 600, xrange(2))
             m.pos = x, y

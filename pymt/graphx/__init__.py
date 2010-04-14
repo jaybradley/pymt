@@ -33,6 +33,7 @@ An example with a rectangle ::
 # TODO compatibility, must be removed
 from old import *
 
+import pymt
 from array import array
 from pymt import BaseObject
 from OpenGL.arrays import vbo
@@ -80,7 +81,8 @@ def _make_point_list(points):
         return list(points)
 
 class Graphic(object):
-    __slots__ = ('_vbo', '_data', '_format', '_type', '_count', '_stride')
+    __slots__ = ('_vbo', '_vbo_usage', '_vbo_target',
+                 '_data', '_format', '_type', '_count')
     def __init__(self, **kwargs):
         kwargs.setdefault('format', None)
         kwargs.setdefault('usage', 'GL_DYNAMIC_DRAW')
@@ -90,14 +92,13 @@ class Graphic(object):
 
         super(Graphic, self).__init__()
 
-        self._vbo = vbo.VBO('',
-                            usage=kwargs.get('usage'),
-                            target=kwargs.get('target'))
-        self._format = []
+        self._data = {}
+        self._vbo = {}
+        self._vbo_usage = kwargs.get('usage')
+        self._vbo_target = kwargs.get('target')
+        self._format = {}
         self._type = 0
         self._count = 0
-        self._stride = 0
-        self._data = array('f')
         self.type = kwargs.get('type')
         self.format = kwargs.get('format')
 
@@ -107,28 +108,26 @@ class Graphic(object):
         format, type = self._format, self._type
         if type is None or len(format) == 0:
             return
-        index = 0
-
-        # bind the vertex buffer
-        self._vbo.bind()
 
         # bind data and enable required client state
-        for fmt in format:
-            size = len(fmt)
+        _vbo = self._vbo
+        for fmt, size in format.items():
             func, state = _pointers_gl[fmt[0]]
-            func(size, GL_FLOAT, index, None)
+            _vbo[fmt].bind()
+            func(size, GL_FLOAT, 0, None)
             glEnableClientState(state)
-            index += size
 
         # draw array
         glDrawArrays(type, 0, self.count)
 
         # deactivate client state
-        for fmt in format:
+        for fmt in format.keys():
+            _vbo[fmt].unbind()
             glDisableClientState(_pointers_gl[fmt[0]][1])
 
     def _set_format(self, format):
         if type(format) == str:
+            self._format = {}
             f, last = [], None
             for x in format:
                 if last is None:
@@ -136,30 +135,53 @@ class Graphic(object):
                 elif last[0] == x:
                     last += x
                 else:
-                    f.append(last)
+                    self._format[last[0]] = len(last)
                     last = x
             if last is not None:
-                f.append(last)
-            self._format = f
-            self._stride = len(format)
+                self._format[last[0]] = len(last)
         else:
             self._format = format
-            self._stride = sum([len(x) for x in format])
     def _get_format(self):
         return self._format
     format = property(
         lambda self: self._get_format(),
         lambda self, x: self._set_format(x))
 
-    def _set_data(self, data):
-        self._count = len(data) / self._stride
-        self._data = data
-        self._vbo.set_array(self._data.tostring())
-    def _get_data(self):
-        return self._data
-    data = property(
-        lambda self: self._get_data(),
-        lambda self, x: self._set_data(x))
+    def _set_data(self, typ, data):
+        try:
+            _vbo = self._vbo[typ]
+        except KeyError:
+            _vbo = vbo.VBO('', usage=self._vbo_usage, target=self._vbo_target)
+            self._vbo[typ] = _vbo
+        if typ == 'v':
+            self._count = len(data) / self._format['v']
+        if type(data) is not array:
+            data = array('f', data)
+        self._data[typ] = data
+        _vbo.set_array(data.tostring())
+    def _get_data(self, typ):
+        try:
+            return self._data[typ]
+        except KeyError:
+            return None
+    data_v = property(
+        lambda self: self._get_data('v'),
+        lambda self, x: self._set_data('v', x))
+    data_c = property(
+        lambda self: self._get_data('c'),
+        lambda self, x: self._set_data('c', x))
+    data_t = property(
+        lambda self: self._get_data('t'),
+        lambda self, x: self._set_data('t', x))
+    data_n = property(
+        lambda self: self._get_data('n'),
+        lambda self, x: self._set_data('n', x))
+    data_e = property(
+        lambda self: self._get_data('e'),
+        lambda self, x: self._set_data('e', x))
+    data_i = property(
+        lambda self: self._get_data('i'),
+        lambda self, x: self._set_data('i', x))
 
     def _get_type(self):
         return self._type
@@ -175,10 +197,6 @@ class Graphic(object):
     def count(self):
         return self._count
 
-    @property
-    def stride(self):
-        return self._stride
-
 class Line(Graphic):
     __slots__ = ('points')
     def __init__(self, points, **kwargs):
@@ -187,16 +205,16 @@ class Line(Graphic):
         self.points = points
 
     def _get_points(self):
-        return self.data.tolist()
+        return self.data_v.tolist()
     def _set_points(self, x):
-        self.data = array('f', x)
+        self.data_v = x
     points = property(
         lambda self: self._get_points(),
         lambda self, x: self._set_points(x))
 
 class Rectangle(Graphic):
     __slots__ = ('_pos', '_size', '_texture', '_tex_coords', '_colors_coords',
-                 '_need_rebuild')
+                 '_need_rebuild', '_stmt')
     def __init__(self, **kwargs):
         kwargs.setdefault('type', 'quads')
         kwargs.setdefault('pos', (0, 0))
@@ -220,51 +238,43 @@ class Rectangle(Graphic):
         self._tex_coords = kwargs.get('tex_coords')
         self._colors_coords = kwargs.get('colors_coords')
         self._need_rebuild = True
+        self._stmt = None
+        if self._texture:
+            self._stmt = gx_texture(self._texture)
 
     def rebuild(self):
+        # build vertex
         x, y = self.pos
         w, h = self.size
-        texture = self.texture
-        tex_coords = self.tex_coords
-        colors_coords = self.colors_coords
-
-        v = array('f')
+        self.data_v = (x, y, x + w, y, x + w, y + h, x, y + h)
 
         # if texture is provided, use it
+        texture = self.texture
         if texture:
+            tex_coords = self.tex_coords
             if type(texture) in (pymt.Texture, pymt.TextureRegion):
                 tex_coords = texture.tex_coords
             # if tex_coords is provided, use it
             if tex_coords is None:
                 tex_coords = (0.0,0.0, 1.0,0.0, 1.0,1.0, 0.0,1.0)
 
-        # build the vertex
-        v.extend([x, y])
-        if texture: v.extend(tex_coords[0:2])
-        if colors_coords: v.extend(colors_coords[0:4])
-        v.extend([x + w, y])
-        if texture: v.extend(tex_coords[2:4])
-        if colors_coords: v.extend(colors_coords[4:8])
-        v.extend([x + w, y + h])
-        if texture: v.extend(tex_coords[4:6])
-        if colors_coords: v.extend(colors_coords[8:12])
-        v.extend([x, y + h])
-        if texture: v.extend(tex_coords[6:8])
-        if colors_coords: v.extend(colors_coords[12:16])
+            # assign tex_coords
+            self.data_t = tex_coords
 
-        # assign data
-        self.data = v
+        # assign colors coords
+        if self.colors_coords:
+            self.data_c = self.colors_coords
 
     def draw(self):
         if self._need_rebuild:
             self.rebuild()
             self._need_rebuild = False
-        tex = self._texture
-        if tex:
-            tex.bind()
+        stmt = self._stmt
+        if stmt:
+            stmt.bind()
         super(Rectangle, self).draw()
-        if tex:
-            tex.release()
+        if stmt:
+            stmt.release()
 
     def _get_size(self):
         return self._size
@@ -350,6 +360,8 @@ class Rectangle(Graphic):
         return self._texture
     def _set_texture(self, x):
         self._texture = x
+        if self._texture:
+            self._stmt = gx_texture(self._texture)
     texture = property(
         lambda self: self._get_texture(),
         lambda self, x: self._set_texture(x)
