@@ -50,6 +50,7 @@ from old import *
 
 import pymt
 import math
+import collections
 from array import array
 from pymt import BaseObject
 from OpenGL.arrays import vbo
@@ -100,7 +101,91 @@ def _make_point_list(points):
     else:
         return list(points)
 
-class Graphic(object):
+class GraphicContext(object):
+    '''Handle the saving/restore of the context
+    
+    TODO: explain more how it works
+    '''
+    __slots__ = ('state', 'stack', 'journal')
+    def __init__(self):
+        super(GraphicContext, self).__init__()
+        self.state = {}
+        self.stack = []
+        self.journal = {}
+
+        # create initial state
+        self.reset()
+        self.save()
+
+    def __getattr__(self, attr):
+        if attr in GraphicContext.__slots__:
+            return super(GraphicContext, self).__getattribute__(attr)
+        return super(GraphicContext, self).__getattribute__('state')[attr]
+
+    def __setattr__(self, attr, value):
+        if attr in GraphicContext.__slots__:
+            super(GraphicContext, self).__setattr__(attr, value)
+        else:
+            # save into the context
+            super(GraphicContext, self).__getattribute__('state')[attr] = value
+            # save into the journal for a futur play
+            super(GraphicContext, self).__getattribute__('journal')[attr] = True
+
+    def reset(self):
+        self.color = (1, 1, 1, 1)
+        self.blend = False
+        self.blend_sfactor = GL_SRC_ALPHA
+        self.blend_dfactor = GL_ONE_MINUS_SRC_ALPHA
+
+    def save(self):
+        self.stack.append(self.state.copy())
+
+    def restore(self):
+        newstate = self.stack.pop()
+        state = self.state
+        set = self.__setattr__
+        for k, v in newstate.items():
+            if state[k] != v:
+                set(k, v)
+
+    def flush(self):
+        # activate all the last changes done on context
+        # apply all the actions in the journal !
+        if not len(self.journal):
+            return
+        state = self.state
+        journal = self.journal
+        for x in journal.keys():
+            value = state[x]
+            if x == 'color':
+                glColor4f(*value)
+            elif x == 'blend':
+                if value:
+                    glEnable(GL_BLEND)
+                else:
+                    glDisable(GL_BLEND)
+            elif x in ('blend_sfactor', 'blend_dfactor'):
+                glBlendFunc(state['blend_sfactor'], state['blend_dfactor'])
+        journal.clear()
+
+
+#: Default canvas used in graphic element
+default_context = GraphicContext()
+
+class GraphicInstruction(object):
+    def __init__(self):
+        super(GraphicInstruction, self).__init__()
+        self.context = default_context
+
+class GraphicContextSave(GraphicInstruction):
+    def draw(self):
+        self.context.save()
+
+class GraphicContextRestore(GraphicInstruction):
+    def draw(self):
+        self.context.restore()
+
+class GraphicElement(GraphicInstruction):
     '''
     This is the lowest graphical element you can use. It's an abstraction to
     Vertex Buffer Object, and you can push your vertex, color, texture ... and
@@ -151,7 +236,7 @@ class Graphic(object):
         assert(kwargs.get('format') != None)
         assert(kwargs.get('type') != None)
 
-        super(Graphic, self).__init__()
+        super(GraphicElement, self).__init__()
 
         self._data = {}
         self._vbo = {}
@@ -178,6 +263,9 @@ class Graphic(object):
             _vbo[fmt].bind()
             func(size, GL_FLOAT, 0, None)
             glEnableClientState(state)
+
+        # activate at the very last moment all changes done on context
+        self.context.flush()
 
         # draw array
         glDrawArrays(type, 0, self.count)
@@ -279,7 +367,7 @@ class Graphic(object):
         return self._count
 
 
-class Line(Graphic):
+class Line(GraphicElement):
     '''
     Construct line from points.
     This object is a simplification of Graphic method to draw line.
@@ -301,7 +389,7 @@ class Line(Graphic):
     )
 
 
-class Rectangle(Graphic):
+class Rectangle(GraphicElement):
     '''
     Construct a rectangle from position + size.
     The rectangle can be use to draw shape of rectangle, filled rectangle,
@@ -549,10 +637,10 @@ class RoundedRectangle(Rectangle):
             while t < math.pi * 2:
                 sx = x + w - radius + math.cos(t) * radius
                 sy = y + radius + math.sin(t) * radius
-                data_v.extend([sx, sy])
+                data_v.extend((sx, sy))
                 t += precision
         else:
-            data_v.extend([x + w, y])
+            data_v.extend((x + w, y))
 
         if ctr:
             data_v.extend((x + w, y + radius))
@@ -628,3 +716,132 @@ class RoundedRectangle(Rectangle):
         lambda self, x: self._set_radius(x),
         doc='Get/set the radius of the corner'
     )
+
+
+class Color(GraphicInstruction):
+    '''Define current color to be used (as float values between 0 and 1) ::
+
+        c = Canvas()
+        c.color(1, 0, 0, 1)
+        c.rectangle(pos=(50, 50), size=(100, 100))
+
+        c.draw()
+
+    .. Note:
+        Blending is activated if alpha value != 1
+
+    :Parameters:
+        `*colors` : list
+            Can have 3 or 4 float value (between 0 and 1)
+        `sfactor` : opengl factor, default to GL_SRC_ALPHA
+            Default source factor to be used if blending is activated
+        `dfactor` : opengl factor, default to GL_ONE_MINUS_SRC_ALPHA
+            Default destination factor to be used if blending is activated
+        `blend` : boolean, default to None
+            Set True if you really want to activate blending, even
+            if the alpha color is 1 (mean no blending in theory)
+    '''
+
+    __slots__ = ('_blend', '_sfactor', '_dfactor', '_colors')
+
+    def __init__(self, *colors, **kwargs):
+        kwargs.setdefault('sfactor', GL_SRC_ALPHA)
+        kwargs.setdefault('dfactor', GL_ONE_MINUS_SRC_ALPHA)
+        kwargs.setdefault('blend', None)
+
+        super(Color, self).__init__()
+
+        self._blend = kwargs.get('blend')
+        self._sfactor = kwargs.get('sfactor')
+        self._dfactor = kwargs.get('dfactor')
+        self._colors = colors
+
+    def draw(self):
+        force_blend = self._blend== True
+        colors = self._colors
+        ctx = self.context
+        l = len(colors)
+
+        if l == 1:
+            colors = (colors[0], colors[0], colors[0], 1)
+        elif l == 3:
+            colors = (colors[0], colors[1], colors[2], 1)
+        elif l == 4:
+            pass
+        else:
+            raise Exception('Unsupported color format')
+            
+        ctx.color = colors
+        if colors[3] == 1 and not force_blend:
+            ctx.blend = False
+        else:
+            ctx.blend = True
+            ctx.sfactor = self._sfactor
+            ctx.dfactor = self._dfactor
+
+
+class Canvas(object):
+    '''Create a batch of graphic object.
+    Can be use to store many graphic instruction, and call them for drawing.
+    In a future, we'll do optimization on this, like merge vbo if possible.
+    '''
+
+    __slots__ = ('_batch', '_context')
+
+    def __init__(self, **kwargs):
+        self._batch = []
+        self._context = default_context
+        
+    def add(self, graphic):
+        '''Add a graphic element to draw'''
+        #if isinstance(graphic, GraphicInstruction):
+        #    raise Exception('Canvas accept only Graphic Instruction')
+        self._batch.append(graphic)
+        graphic.context = self._context
+        return graphic
+
+    def remove(self, graphic):
+        '''Remove a graphic element from the list of objects'''
+        try:
+            self._batch.remove(graphic)
+        except:
+            pass
+
+    def clear(self):
+        '''Clear all the elements in canvas'''
+        self._batch = []
+
+    def draw(self):
+        '''Draw all the canvas elements'''
+        for x in self._batch:
+            x.draw()
+
+    def save(self):
+        '''Push the current context to the stack'''
+        self.add(GraphicContextSave())
+
+    def restore(self):
+        '''Restore the previous saved context'''
+        self.add(GraphicContextRestore())
+
+    # facilities to create object
+    def line(self, *largs, **kwargs):
+        '''Create a Line() object, and add to the list.
+        Check Line() for more information.'''
+        return self.add(Line(*largs, **kwargs))
+
+    def rectangle(self, *largs, **kwargs):
+        '''Create a Rectangle() object, and add to the list.
+        Check Rectangle() for more information.'''
+        return self.add(Rectangle(*largs, **kwargs))
+
+    def roundedRectangle(self, *largs, **kwargs):
+        '''Create a RoundedRectangle() object, and add to the list.
+        Check RoundedRectangle() for more information.'''
+        return self.add(RoundedRectangle(*largs, **kwargs))
+
+    def color(self, *largs, **kwargs):
+        '''Create a Color() object, and add to the list.
+        Check Color() for more information.'''
+        return self.add(Color(*largs, **kwargs))
+
