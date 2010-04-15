@@ -9,7 +9,10 @@ In order to create line, rectangle.. you must create object, then draw them.
 
 An example with a line ::
 
+    # in init function
     line = Line([50, 50, 100, 100])
+
+    # in draw function
     line.draw()
 
     # If you want to change point of the line later, you can do
@@ -21,12 +24,24 @@ An example with a line ::
 
 An example with a rectangle ::
 
+    # in init function
     rect = Rectangle(pos=(50, 50), size=(200, 200))
+
+    # in draw function
     rect.draw()
 
     # You can change pos, size...
     rect.pos = (10, 10)
     rect.size = (999, 999)
+
+An example with a rectangle + texture ::
+
+    # in init function
+    img = Image('test.png')
+    rect = Rectangle(size=(100, 100), texture=img.texture)
+
+    # in draw function
+    rect.draw()
 
 '''
 
@@ -34,6 +49,7 @@ An example with a rectangle ::
 from old import *
 
 import pymt
+import math
 from array import array
 from pymt import BaseObject
 from OpenGL.arrays import vbo
@@ -65,9 +81,13 @@ _type_gl = {
     'points': GL_POINTS,
     'lines': GL_LINES,
     'line_loop': GL_LINE_LOOP,
+    'line_strip': GL_LINE_STRIP,
     'triangles': GL_TRIANGLES,
     'triangle_fan': GL_TRIANGLE_FAN,
+    'triangle_strip': GL_TRIANGLE_STRIP,
     'quads': GL_QUADS,
+    'quad_strip': GL_QUAD_STRIP,
+    'polygon': GL_POLYGON
 }
 
 def _make_point_list(points):
@@ -81,14 +101,55 @@ def _make_point_list(points):
         return list(points)
 
 class Graphic(object):
+    '''
+    This is the lowest graphical element you can use. It's an abstraction to
+    Vertex Buffer Object, and you can push your vertex, color, texture ... and
+    draw them easily.
+
+    The format of the buffer is specified in characters code. For example,
+    'vvcccc' mean you'll have 2 vertex + 4 colors coordinates.
+    You have 6 differents components that you can use:
+        * v: vertex
+        * c: color
+        * t: texture
+        * n: normal
+        * i: index (not yet used)
+        * e: edge (not yet used)
+
+    For each component, VBO are separated.
+    
+    :Parameters:
+        `format`: string, default to None
+            The format must be specified at start, and cannot be changed once
+            the graphic is created.
+        `type`: string, default to None
+            Specify how the graphic will be drawed. One of: 'lines',
+            'line_loop', 'line_strip', 'triangles', 'triangle_fan',
+            'triangle_strip', 'quads', 'quad_strip', 'points', 'polygon'
+        `usage`: string, default to 'GL_DYNAMIC_DRAW'
+            Specify the usage of VBO. Can be one of 'GL_STREAM_DRAW',
+            'GL_STREAM_READ', 'GL_STREAM_COPY', 'GL_STATIC_DRAW',
+            'GL_STATIC_READ', 'GL_STATIC_COPY', 'GL_DYNAMIC_DRAW',
+            'GL_DYNAMIC_READ', or 'GL_DYNAMIC_COPY'.
+            Infos: http://www.opengl.org/sdk/docs/man/xhtml/glBufferData.xml
+        `target`: string, default to 'GL_ARRAY_BUFFER'
+            Target of the VBO. Can be one of 'GL_ARRAY_BUFFER',
+            'GL_ELEMENT_ARRAY_BUFFER', 'GL_PIXEL_PACK_BUFFER', or
+            'GL_PIXEL_UNPACK_BUFFER'.
+            Infos: http://www.opengl.org/sdk/docs/man/xhtml/glBufferData.xml
+    '''
+
     __slots__ = ('_vbo', '_vbo_usage', '_vbo_target',
                  '_data', '_format', '_type', '_count')
+
     def __init__(self, **kwargs):
         kwargs.setdefault('format', None)
+        kwargs.setdefault('type', None)
         kwargs.setdefault('usage', 'GL_DYNAMIC_DRAW')
         kwargs.setdefault('target', 'GL_ARRAY_BUFFER')
 
-        assert( kwargs.get('format') != None )
+        assert(kwargs.get('format') != None)
+        assert(kwargs.get('type') != None)
 
         super(Graphic, self).__init__()
 
@@ -102,14 +163,15 @@ class Graphic(object):
         self.type = kwargs.get('type')
         self.format = kwargs.get('format')
 
-        assert(self._type != None)
-
     def draw(self):
+        '''Draw the graphical element on screen'''
         format, type = self._format, self._type
         if type is None or len(format) == 0:
             return
 
         # bind data and enable required client state
+        # first, for each format component, extract the gl function to use
+        # and bind the vbo associated + activate
         _vbo = self._vbo
         for fmt, size in format.items():
             func, state = _pointers_gl[fmt[0]]
@@ -127,6 +189,8 @@ class Graphic(object):
 
     def _set_format(self, format):
         if type(format) == str:
+            # transform the 'vvttcccc' to
+            # {'v': 2, 't': 2, 'c': 4}
             self._format = {}
             f, last = [], None
             for x in format:
@@ -139,13 +203,16 @@ class Graphic(object):
                     last = x
             if last is not None:
                 self._format[last[0]] = len(last)
-        else:
+        elif type(format) == dict:
             self._format = format
+        else:
+            raise Exception('Invalid format')
     def _get_format(self):
-        return self._format
+        return ''.join([x * y for x, y in self._format.items()])
     format = property(
         lambda self: self._get_format(),
-        lambda self, x: self._set_format(x))
+        lambda self, x: self._set_format(x),
+        doc='Return the format of the graphic in string (eg. "vvttcccc")')
 
     def _set_data(self, typ, data):
         try:
@@ -166,22 +233,28 @@ class Graphic(object):
             return None
     data_v = property(
         lambda self: self._get_data('v'),
-        lambda self, x: self._set_data('v', x))
+        lambda self, x: self._set_data('v', x),
+        doc='Get/set the vertex coordinates data')
     data_c = property(
         lambda self: self._get_data('c'),
-        lambda self, x: self._set_data('c', x))
+        lambda self, x: self._set_data('c', x),
+        doc='Get/set the colors coordinates data')
     data_t = property(
         lambda self: self._get_data('t'),
-        lambda self, x: self._set_data('t', x))
+        lambda self, x: self._set_data('t', x),
+        doc='Get/set the texture coordinates data')
     data_n = property(
         lambda self: self._get_data('n'),
-        lambda self, x: self._set_data('n', x))
+        lambda self, x: self._set_data('n', x),
+        doc='Get/set the normal coordinates data')
     data_e = property(
         lambda self: self._get_data('e'),
-        lambda self, x: self._set_data('e', x))
+        lambda self, x: self._set_data('e', x),
+        doc='Get/set the edges data (not used yet.)')
     data_i = property(
         lambda self: self._get_data('i'),
-        lambda self, x: self._set_data('i', x))
+        lambda self, x: self._set_data('i', x),
+        doc='Get/set the indexes data (not used yet.)')
 
     def _get_type(self):
         return self._type
@@ -191,13 +264,26 @@ class Graphic(object):
         self._type = x
     type = property(
         lambda self: self._get_type(),
-        lambda self, x: self._set_type(x))
+        lambda self, x: self._set_type(x),
+        doc='''
+            Specify how the graphic will be drawed. One of: 'lines',
+            'line_loop', 'line_strip', 'triangles', 'triangle_fan',
+            'triangle_strip', 'quads', 'quad_strip', 'points', 'polygon'
+        ''')
 
     @property
     def count(self):
+        '''Return the number of elements (if format is vv, and you have 4
+        vertex, it will return 2). The number of elements is calculated on
+        vertex.'''
         return self._count
 
+
 class Line(Graphic):
+    '''
+    Construct line from points.
+    This object is a simplification of Graphic method to draw line.
+    '''
     __slots__ = ('points')
     def __init__(self, points, **kwargs):
         kwargs.setdefault('type', 'line_loop')
@@ -210,9 +296,34 @@ class Line(Graphic):
         self.data_v = x
     points = property(
         lambda self: self._get_points(),
-        lambda self, x: self._set_points(x))
+        lambda self, x: self._set_points(x),
+        doc='''Add/remove points of the line'''
+    )
+
 
 class Rectangle(Graphic):
+    '''
+    Construct a rectangle from position + size.
+    The rectangle can be use to draw shape of rectangle, filled rectangle,
+    textured rectangle, rounded rectangle...
+
+    ..warning ::
+        Each time you change one property of the rectangle, vertex list is
+        automaticly rebuilded at the next draw() call. 
+
+    :Parameters:
+        `pos`: list, default to (0, 0)
+            Position of the rectangle
+        `size`: list, default to (1, 1)
+            Size of the rectangle
+        `texture`: texture, default to None
+            Specify the texture to use for the rectangle
+        `tex_coords`: list, default to None
+            If a texture is specified, the tex_coords will be taken from the
+            texture argument. Otherwise, it will be set on 0-1 range.
+        `colors_coords`: list, default to None
+            Can be used to specify a color for each vertex drawed.
+    '''
     __slots__ = ('_pos', '_size', '_texture', '_tex_coords', '_colors_coords',
                  '_need_rebuild', '_stmt')
     def __init__(self, **kwargs):
@@ -243,6 +354,8 @@ class Rectangle(Graphic):
             self._stmt = gx_texture(self._texture)
 
     def rebuild(self):
+        '''Rebuild all the vbos. This is automaticly called when a property
+        change (position, size, tex_coords...)'''
         # build vertex
         x, y = self.pos
         w, h = self.size
@@ -321,7 +434,8 @@ class Rectangle(Graphic):
         self._need_rebuild = True
         return True
     pos = property(lambda self: self._get_pos(),
-                   lambda self, x: self._set_pos(x), doc='Object position (x, y)')
+                   lambda self, x: self._set_pos(x),
+                   doc='Object position (x, y)')
 
     def _get_x(self):
         return self._pos[0]
@@ -364,7 +478,8 @@ class Rectangle(Graphic):
             self._stmt = gx_texture(self._texture)
     texture = property(
         lambda self: self._get_texture(),
-        lambda self, x: self._set_texture(x)
+        lambda self, x: self._set_texture(x),
+        doc='Texture to use on the object'
     )
 
     def _get_tex_coords(self):
@@ -374,7 +489,11 @@ class Rectangle(Graphic):
         self._need_rebuild = True
     tex_coords = property(
         lambda self: self._get_tex_coords(),
-        lambda self, x: self._set_tex_coords(x)
+        lambda self, x: self._set_tex_coords(x),
+        doc='''
+        Texture coordinates to use on the object. If nothing is set, it
+        will take the coordinates from the current texture
+        '''
     )
 
     def _get_colors_coords(self):
@@ -384,6 +503,128 @@ class Rectangle(Graphic):
         self._need_rebuild = True
     colors_coords = property(
         lambda self: self._get_colors_coords(),
-        lambda self, x: self._set_colors_coords(x)
+        lambda self, x: self._set_colors_coords(x),
+        doc='Colors coordinates for each vertex'
     )
 
+
+class RoundedRectangle(Rectangle):
+    '''Draw a rounded rectangle
+
+    warning.. ::
+        Rounded rectangle support only vertex, not other things right now.
+        It may change in the future.
+
+    :Parameters:
+        `radius` : int, default to 5
+            Radius of corner
+        `precision` : float, default to 0.5
+            Precision of corner angle
+        `corners` : tuple of bool, default to (True, True, True, True)
+            Indicate if round must be draw for each corners
+            starting to bottom-left, bottom-right, top-right, top-left
+    '''
+    __slots__ = ('_corners', '_precision', '_radius')
+    def __init__(self, **kwargs):
+        kwargs.setdefault('type', 'polygon')
+        kwargs.setdefault('corners', (True, True, True, True))
+        kwargs.setdefault('precision', .2)
+        kwargs.setdefault('radius', 5)
+        super(RoundedRectangle, self).__init__(**kwargs)
+        self._corners = kwargs.get('corners')
+        self._precision = kwargs.get('precision')
+        self._radius = kwargs.get('radius')
+
+    def rebuild(self):
+        radius = self._radius
+        precision = self._precision
+        cbl, cbr, ctr, ctl = self._corners
+        x, y = self.pos
+        w, h = self.size
+        data_v = array('f', [])
+        if cbr:
+            data_v.extend((x + radius, y))
+            data_v.extend((x + w - radius, y))
+            t = math.pi * 1.5
+            while t < math.pi * 2:
+                sx = x + w - radius + math.cos(t) * radius
+                sy = y + radius + math.sin(t) * radius
+                data_v.extend([sx, sy])
+                t += precision
+        else:
+            data_v.extend([x + w, y])
+
+        if ctr:
+            data_v.extend((x + w, y + radius))
+            data_v.extend((x + w, y + h - radius))
+            t = 0
+            while t < math.pi * 0.5:
+                sx = x + w - radius + math.cos(t) * radius
+                sy = y + h -radius + math.sin(t) * radius
+                data_v.extend((sx, sy))
+                t += precision
+        else:
+            data_v.extend((x + w, y + h))
+
+        if ctl:
+            data_v.extend((x + w -radius, y + h))
+            data_v.extend((x + radius, y + h))
+            t = math.pi * 0.5
+            while t < math.pi:
+                sx = x  + radius + math.cos(t) * radius
+                sy = y + h - radius + math.sin(t) * radius
+                data_v.extend((sx, sy))
+                t += precision
+        else:
+            data_v.extend((x, y + h))
+
+        if cbl:
+            data_v.extend((x, y + h - radius))
+            data_v.extend((x, y + radius))
+            t = math.pi
+            while t < math.pi * 1.5:
+                sx = x + radius + math.cos(t) * radius
+                sy = y + radius + math.sin(t) * radius
+                data_v.extend((sx, sy))
+                t += precision
+        else:
+            data_v.extend((x, y))
+
+        self.data_v = data_v
+
+    def _get_corners(self):
+        return self._corners
+    def _set_corners(self, x):
+        if type(x) not in (list, tuple):
+            raise Exception('Invalid corner type')
+        if len(x) != 4:
+            raise Exception('Must have 4 boolean inside the corners list')
+        self._corners = x
+        self._need_rebuild = True
+    corners = property(
+        lambda self: self._get_corners(),
+        lambda self, x: self._set_corners(x),
+        doc='Get/set the corners to draw'
+    )
+
+    def _get_precision(self):
+        return self._precision
+    def _set_precision(self, x):
+        self._precision = x
+        self._need_rebuild = True
+    precision = property(
+        lambda self: self._get_precision(),
+        lambda self, x: self._set_precision(x),
+        doc='Get/set the precision of the corner'
+    )
+    
+    def _get_radius(self):
+        return self._radius
+    def _set_radius(self, x):
+        self._radius = x
+        self._need_rebuild = True
+    radius = property(
+        lambda self: self._get_radius(),
+        lambda self, x: self._set_radius(x),
+        doc='Get/set the radius of the corner'
+    )
