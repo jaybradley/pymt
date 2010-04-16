@@ -136,6 +136,7 @@ class GraphicContext(object):
         self.blend = False
         self.blend_sfactor = GL_SRC_ALPHA
         self.blend_dfactor = GL_ONE_MINUS_SRC_ALPHA
+        self.linewidth = 1
 
     def save(self):
         self.stack.append(self.state.copy())
@@ -166,6 +167,8 @@ class GraphicContext(object):
                     glDisable(GL_BLEND)
             elif x in ('blend_sfactor', 'blend_dfactor'):
                 glBlendFunc(state['blend_sfactor'], state['blend_dfactor'])
+            elif x == 'linewidth':
+                glLineWidth(value)
         journal.clear()
 
 
@@ -173,9 +176,13 @@ class GraphicContext(object):
 default_context = GraphicContext()
 
 class GraphicInstruction(object):
+    __slots__ = ('context', )
     def __init__(self):
         super(GraphicInstruction, self).__init__()
         self.context = default_context
+    def draw(self):
+        '''Draw/Execute the graphical element on screen'''
+        pass
 
 class GraphicContextSave(GraphicInstruction):
     def draw(self):
@@ -184,6 +191,15 @@ class GraphicContextSave(GraphicInstruction):
 class GraphicContextRestore(GraphicInstruction):
     def draw(self):
         self.context.restore()
+
+class GraphicContextChange(GraphicInstruction):
+    __slots__ = ('instructions', )
+    def __init__(self, **kwargs):
+        super(GraphicContextChange, self).__init__()
+        self.instructions = kwargs
+    def draw(self):
+        for k, v in self.instructions.iteritems():
+            setattr(self.context, k, v)
 
 class GraphicElement(GraphicInstruction):
     '''
@@ -249,7 +265,6 @@ class GraphicElement(GraphicInstruction):
         self.format = kwargs.get('format')
 
     def draw(self):
-        '''Draw the graphical element on screen'''
         format, type = self._format, self._type
         if type is None or len(format) == 0:
             return
@@ -397,9 +412,11 @@ class Rectangle(GraphicElement):
 
     ..warning ::
         Each time you change one property of the rectangle, vertex list is
-        automaticly rebuilded at the next draw() call. 
+        automaticly builded at the next draw() call. 
 
     :Parameters:
+        `*values`: list, default to None
+            Can be used to provide a tuple of (x, y, w, h)
         `pos`: list, default to (0, 0)
             Position of the rectangle
         `size`: list, default to (1, 1)
@@ -413,8 +430,8 @@ class Rectangle(GraphicElement):
             Can be used to specify a color for each vertex drawed.
     '''
     __slots__ = ('_pos', '_size', '_texture', '_tex_coords', '_colors_coords',
-                 '_need_rebuild', '_stmt')
-    def __init__(self, **kwargs):
+                 '_need_build', '_stmt')
+    def __init__(self, *values, **kwargs):
         kwargs.setdefault('type', 'quads')
         kwargs.setdefault('pos', (0, 0))
         kwargs.setdefault('size', (1, 1))
@@ -433,16 +450,22 @@ class Rectangle(GraphicElement):
 
         self._pos = kwargs.get('pos')
         self._size = kwargs.get('size')
+        if len(values) == 4:
+            x, y, w, h = values
+            self._pos = x, y
+            self._size = w, h
+        elif len(values) != 0:
+            raise Exception('Rectangle values must be passed like this: Rectangle(x, y, w, h)')
         self._texture = kwargs.get('texture')
         self._tex_coords = kwargs.get('tex_coords')
         self._colors_coords = kwargs.get('colors_coords')
-        self._need_rebuild = True
+        self._need_build = True
         self._stmt = None
         if self._texture:
             self._stmt = gx_texture(self._texture)
 
-    def rebuild(self):
-        '''Rebuild all the vbos. This is automaticly called when a property
+    def build(self):
+        '''Build all the vbos. This is automaticly called when a property
         change (position, size, tex_coords...)'''
         # build vertex
         x, y = self.pos
@@ -467,9 +490,9 @@ class Rectangle(GraphicElement):
             self.data_c = self.colors_coords
 
     def draw(self):
-        if self._need_rebuild:
-            self.rebuild()
-            self._need_rebuild = False
+        if self._need_build:
+            self.build()
+            self._need_build = False
         stmt = self._stmt
         if stmt:
             stmt.bind()
@@ -483,7 +506,7 @@ class Rectangle(GraphicElement):
         if self._size == size:
             return False
         self._size = size
-        self._need_rebuild = True
+        self._need_build = True
         return True
     size = property(lambda self: self._get_size(),
                     lambda self, x: self._set_size(x),
@@ -495,7 +518,7 @@ class Rectangle(GraphicElement):
         if self._size[0] == w:
             return False
         self._size = (w, self._size[1])
-        self._need_rebuild = True
+        self._need_build = True
         return True
     width = property(lambda self: self._get_width(),
                      lambda self, x: self._set_width(x),
@@ -507,7 +530,7 @@ class Rectangle(GraphicElement):
         if self._size[1] == h:
             return False
         self._size = (self._size[0], h)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     height = property(lambda self: self._get_height(),
                      lambda self, x: self._set_height(x),
@@ -519,7 +542,7 @@ class Rectangle(GraphicElement):
         if pos == self._pos:
             return False
         self._pos = tuple(pos)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     pos = property(lambda self: self._get_pos(),
                    lambda self, x: self._set_pos(x),
@@ -531,7 +554,7 @@ class Rectangle(GraphicElement):
         if x == self.pos[0]:
             return False
         self._pos = (x, self.y)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     x = property(lambda self: self._get_x(),
                  lambda self, x: self._set_x(x),
@@ -543,7 +566,7 @@ class Rectangle(GraphicElement):
         if y == self.pos[1]:
             return False
         self._pos = (self.x, y)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     y = property(lambda self: self._get_y(),
                  lambda self, x: self._set_y(x),
@@ -561,6 +584,8 @@ class Rectangle(GraphicElement):
     def _get_texture(self):
         return self._texture
     def _set_texture(self, x):
+        if self._texture == x:
+            return
         self._texture = x
         if self._texture:
             self._stmt = gx_texture(self._texture)
@@ -573,8 +598,10 @@ class Rectangle(GraphicElement):
     def _get_tex_coords(self):
         return self._tex_coords
     def _set_tex_coords(self, x):
+        if self._tex_coords == x:
+            return
         self._tex_coords = x
-        self._need_rebuild = True
+        self._need_build = True
     tex_coords = property(
         lambda self: self._get_tex_coords(),
         lambda self, x: self._set_tex_coords(x),
@@ -587,8 +614,10 @@ class Rectangle(GraphicElement):
     def _get_colors_coords(self):
         return self._colors_coords
     def _set_colors_coords(self, x):
+        if self._colors_coords == x:
+            return
         self._colors_coords = x
-        self._need_rebuild = True
+        self._need_build = True
     colors_coords = property(
         lambda self: self._get_colors_coords(),
         lambda self, x: self._set_colors_coords(x),
@@ -623,7 +652,7 @@ class RoundedRectangle(Rectangle):
         self._precision = kwargs.get('precision')
         self._radius = kwargs.get('radius')
 
-    def rebuild(self):
+    def build(self):
         radius = self._radius
         precision = self._precision
         cbl, cbr, ctr, ctl = self._corners
@@ -683,12 +712,14 @@ class RoundedRectangle(Rectangle):
     def _get_corners(self):
         return self._corners
     def _set_corners(self, x):
+        if self._corners == x:
+            return
         if type(x) not in (list, tuple):
             raise Exception('Invalid corner type')
         if len(x) != 4:
             raise Exception('Must have 4 boolean inside the corners list')
         self._corners = x
-        self._need_rebuild = True
+        self._need_build = True
     corners = property(
         lambda self: self._get_corners(),
         lambda self, x: self._set_corners(x),
@@ -698,8 +729,10 @@ class RoundedRectangle(Rectangle):
     def _get_precision(self):
         return self._precision
     def _set_precision(self, x):
+        if self._precision == x:
+            return
         self._precision = x
-        self._need_rebuild = True
+        self._need_build = True
     precision = property(
         lambda self: self._get_precision(),
         lambda self, x: self._set_precision(x),
@@ -709,8 +742,10 @@ class RoundedRectangle(Rectangle):
     def _get_radius(self):
         return self._radius
     def _set_radius(self, x):
+        if self._radius == x:
+            return
         self._radius = x
-        self._need_rebuild = True
+        self._need_build = True
     radius = property(
         lambda self: self._get_radius(),
         lambda self, x: self._set_radius(x),
@@ -731,7 +766,7 @@ class Color(GraphicInstruction):
         Blending is activated if alpha value != 1
 
     :Parameters:
-        `*colors` : list
+        `*color` : list
             Can have 3 or 4 float value (between 0 and 1)
         `sfactor` : opengl factor, default to GL_SRC_ALPHA
             Default source factor to be used if blending is activated
@@ -742,9 +777,9 @@ class Color(GraphicInstruction):
             if the alpha color is 1 (mean no blending in theory)
     '''
 
-    __slots__ = ('_blend', '_sfactor', '_dfactor', '_colors')
+    __slots__ = ('_blend', '_sfactor', '_dfactor', '_color')
 
-    def __init__(self, *colors, **kwargs):
+    def __init__(self, *color, **kwargs):
         kwargs.setdefault('sfactor', GL_SRC_ALPHA)
         kwargs.setdefault('dfactor', GL_ONE_MINUS_SRC_ALPHA)
         kwargs.setdefault('blend', None)
@@ -754,30 +789,292 @@ class Color(GraphicInstruction):
         self._blend = kwargs.get('blend')
         self._sfactor = kwargs.get('sfactor')
         self._dfactor = kwargs.get('dfactor')
-        self._colors = colors
+        self._color = color
 
     def draw(self):
         force_blend = self._blend== True
-        colors = self._colors
+        color = self._color
         ctx = self.context
-        l = len(colors)
+        l = len(color)
 
         if l == 1:
-            colors = (colors[0], colors[0], colors[0], 1)
+            color = (color[0], color[0], color[0], 1)
         elif l == 3:
-            colors = (colors[0], colors[1], colors[2], 1)
+            color = (color[0], color[1], color[2], 1)
         elif l == 4:
             pass
         else:
             raise Exception('Unsupported color format')
             
-        ctx.color = colors
-        if colors[3] == 1 and not force_blend:
+        ctx.color = color
+        if color[3] == 1 and not force_blend:
             ctx.blend = False
         else:
             ctx.blend = True
             ctx.sfactor = self._sfactor
             ctx.dfactor = self._dfactor
+
+    def _get_color(self):
+        return self._color
+    def _set_color(self, x):
+        if self._color == x:
+            return
+        self._color = x
+        self._need_build = True
+    color = property(
+        lambda self: self._get_color(),
+        lambda self, x: self._set_color(x),
+        doc='''Get/Set the color in tuple format (r, g, b, a)'''
+    )
+
+
+class CSSRectangle(GraphicInstruction):
+    __slots__ = ('_style', '_prefix', '_state', '_objects', '_pos', '_size',
+                 '_need_build')
+    def __init__(self, *values, **kwargs):
+        kwargs.setdefault('style', {})
+        kwargs.setdefault('prefix', None)
+        kwargs.setdefault('state', None)
+        kwargs.setdefault('pos', (0, 0))
+        kwargs.setdefault('size', (1, 1))
+
+        super(CSSRectangle, self).__init__()
+
+        self._objects = []
+        self._style = kwargs.get('style')
+        self._prefix = kwargs.get('prefix')
+        self._state = kwargs.get('state')
+        self._pos = kwargs.get('pos')
+        self._size = kwargs.get('size')
+        if len(values) == 4:
+            x, y, w, h = values
+            self._pos = x, y
+            self._size = w, h
+        elif len(values) != 0:
+            raise Exception('CSSRectangle values must be passed like this: CSSRectangle(x, y, w, h)')
+
+        self._need_build = True
+
+    def build(self):
+        self._objects = []
+
+        state = self._state
+        style = self._style
+        prefix = self._prefix
+        obj = self._objects
+
+        # get background image.
+        # don't add anything else if we just have a background image.
+        bg_image = style.get('bg-image-' + str(state))
+        if not bg_image:
+            bg_image = style.get('bg-image')
+        if bg_image:
+            obj.append(Rectangle(pos=self._pos, size=self._size))
+            return
+
+        # lets use the ones for given state,
+        # and ignore the regular ones if the state ones are there
+        if state:
+            state = '-' + state
+            newstyle = {}
+            overwrites = []
+            for s in style:
+                if state in s:
+                    overwrite  = s.replace(state, '')
+                    newstyle[overwrite] = style[s]
+                    overwrites.append(overwrite)
+                if s not in overwrites:
+                    newstyle[s] = style[s]
+            style = newstyle
+
+        # hack to remove prefix in style
+        if prefix is not None:
+            prefix += '-'
+            newstyle = {}
+            for k in style:
+                newstyle[k] = style[k]
+            for k in style:
+                if prefix in k:
+                    newstyle[k.replace(prefix, '')] = style[k]
+            style = newstyle
+
+        style.setdefault('border-width', 1.5)
+        style.setdefault('border-radius', 0)
+        style.setdefault('border-radius-precision', .1)
+        style.setdefault('draw-border', 0)
+        style.setdefault('draw-background', 1)
+        style.setdefault('draw-alpha-background', 0)
+        style.setdefault('alpha-background', (1, 1, .5, .5))
+
+        k = { 'pos': self._pos, 'size': self._size }
+
+        linewidth = style.get('border-width')
+        bordercolor = None
+        if 'border-color' in style:
+            bordercolor = style['border-color']
+
+        roundrect = False
+        if style['border-radius'] > 0:
+            roundrect = True
+            k.update({
+                'radius': style['border-radius'],
+                'precision': style['border-radius-precision']
+            })
+
+        # set the color of object
+        obj.append(Color(*style['bg-color']))
+
+        # add background object
+        if style['draw-background']:
+            if roundrect:
+                obj.append(RoundedRectangle(**k))
+            else:
+                obj.append(Rectangle(**k))
+
+        # add border object
+        if style['draw-border']:
+            if linewidth or bordercolor:
+                obj.append(GraphicContextSave())
+            if linewidth:
+                obj.append(GraphicContextChange(linewidth=linewidth))
+            if bordercolor:
+                obj.append(Color(*bordercolor))
+            if roundrect:
+                obj.append(RoundedRectangle(type='line_loop', **k))
+            else:
+                obj.append(Rectangle(type='line_loop', **k))
+            if linewidth or bordercolor:
+                obj.append(GraphicContextRestore())
+            # FIXME
+            #if style['draw-alpha-background']:
+            #    drawRoundedRectangleAlpha(alpha=style['alpha-background'], **k)
+
+    def draw(self):
+        if self._need_build:
+            self.build()
+            self._need_build = False
+        for x in self._objects:
+            x.draw()
+
+    def _get_size(self):
+        return self._size
+    def _set_size(self, size):
+        if self._size == size:
+            return False
+        self._size = size
+        self._need_build = True
+        return True
+    size = property(lambda self: self._get_size(),
+                    lambda self, x: self._set_size(x),
+                    doc='Object size (width, height)')
+
+    def _get_width(self):
+        return self._size[0]
+    def _set_width(self, w):
+        if self._size[0] == w:
+            return False
+        self._size = (w, self._size[1])
+        self._need_build = True
+        return True
+    width = property(lambda self: self._get_width(),
+                     lambda self, x: self._set_width(x),
+                     doc='Object width')
+
+    def _get_height(self):
+        return self._size[1]
+    def _set_height(self, h):
+        if self._size[1] == h:
+            return False
+        self._size = (self._size[0], h)
+        self._need_build = True
+        return True
+    height = property(lambda self: self._get_height(),
+                     lambda self, x: self._set_height(x),
+                      doc='Object height')
+
+    def _get_pos(self):
+        return self._pos
+    def _set_pos(self, pos):
+        if pos == self._pos:
+            return False
+        self._pos = tuple(pos)
+        self._need_build = True
+        return True
+    pos = property(lambda self: self._get_pos(),
+                   lambda self, x: self._set_pos(x),
+                   doc='Object position (x, y)')
+
+    def _get_x(self):
+        return self._pos[0]
+    def _set_x(self, x):
+        if x == self.pos[0]:
+            return False
+        self._pos = (x, self.y)
+        self._need_build = True
+        return True
+    x = property(lambda self: self._get_x(),
+                 lambda self, x: self._set_x(x),
+                 doc = 'Object X position')
+
+    def _get_y(self):
+        return self._pos[1]
+    def _set_y(self, y):
+        if y == self.pos[1]:
+            return False
+        self._pos = (self.x, y)
+        self._need_build = True
+        return True
+    y = property(lambda self: self._get_y(),
+                 lambda self, x: self._set_y(x),
+                 doc = 'Object Y position')
+
+    def _get_center(self):
+        return (self._pos[0] + self._size[0] / 2., self._pos[1] + self._size[1] / 2.)
+    def _set_center(self, center):
+        return self._set_pos((center[0] - self._size[0] / 2.,
+                              center[1] - self._size[1] / 2.))
+    center = property(lambda self: self._get_center(),
+                      lambda self, x: self._set_center(x),
+                      doc='Object center (cx, cy)')
+
+    def _get_state(self):
+        return self._state
+    def _set_state(self, x):
+        if self._state == x:
+            return
+        self._state = x
+        self._need_build = True
+    state = property(
+        lambda self: self._get_state(),
+        lambda self, x: self._set_state(x),
+        doc='Get/Set the css state to use'
+    )
+
+    def _get_prefix(self):
+        return self._prefix
+    def _set_prefix(self, x):
+        if self._prefix == x:
+            return
+        self._prefix = x
+        self._need_build = True
+    prefix = property(
+        lambda self: self._get_prefix(),
+        lambda self, x: self._set_prefix(x),
+        doc='Get/Set the css prefix to use'
+    )
+
+    def _get_style(self):
+        return self._style
+    def _set_style(self, x):
+        if self._style == x:
+            return
+        self._style = x
+        self._need_build = True
+    style = property(
+        lambda self: self._get_style(),
+        lambda self, x: self._set_style(x),
+        doc='Get/Set the css style to use (normally, its the widget.style property'
+    )
 
 
 class Canvas(object):
@@ -839,6 +1136,11 @@ class Canvas(object):
         '''Create a RoundedRectangle() object, and add to the list.
         Check RoundedRectangle() for more information.'''
         return self.add(RoundedRectangle(*largs, **kwargs))
+
+    def cssRectangle(self, *largs, **kwargs):
+        '''Create a CSSRectangle() object, and add to the list.
+        Check CSSRectangle() for more information.'''
+        return self.add(CSSRectangle(*largs, **kwargs))
 
     def color(self, *largs, **kwargs):
         '''Create a Color() object, and add to the list.

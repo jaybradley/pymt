@@ -7,9 +7,7 @@ __all__ = ['MTButton', 'MTToggleButton', 'MTImageButton']
 
 import pymt
 import weakref
-from OpenGL.GL import *
-from ...graphx import GlDisplayList, set_color, gx_blending
-from ...graphx import drawCSSRectangle
+from ...graphx import CSSRectangle
 from ...utils import SafeList
 from ..factory import MTWidgetFactory
 from widget import MTWidget
@@ -74,6 +72,7 @@ class MTButton(MTLabel):
         kwargs.setdefault('size', (100, 100))
         self._state         = 'normal'
         self._current_touch = None
+        self._background    = CSSRectangle()
         super(MTButton, self).__init__(**kwargs)
         self.register_event_type('on_press')
         self.register_event_type('on_release')
@@ -116,9 +115,12 @@ class MTButton(MTLabel):
         pass
 
     def draw_background(self):
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style,
-                         state=self.state)
+        background = self._background
+        background.style = self.style
+        background.state = self.state
+        background.pos = self.pos
+        background.size = self.size
+        background.draw()
 
     def draw_label(self, dx=0, dy=0):
         if self.style['draw-text-shadow']:
