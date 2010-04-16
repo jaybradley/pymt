@@ -18,7 +18,7 @@ from ...utils import SafeList
 from ..animation import Animation, AnimationAlpha
 from ..factory import MTWidgetFactory
 from ..colors import css_get_style
-from ...graphx import set_color, drawCSSRectangle
+from ...graphx import CSSRectangle
 
 _id_2_widget = {}
 
@@ -101,7 +101,7 @@ class MTWidget(EventDispatcher):
                  '_parent_window_source', '_parent_window',
                  '_parent_layout_source', '_parent_layout',
                  '_size_hint', '_id', '_parent',
-                 '_visible', '_inline_style',
+                 '_visible', '_inline_style', '_rect',
                  '__weakref__')
 
     visible_events = [
@@ -176,6 +176,17 @@ class MTWidget(EventDispatcher):
         self._inline_style = kwargs.get('style')
         if len(kwargs.get('style')):
             self.apply_css(kwargs.get('style'))
+
+        # By default this widget is represented by a rectangle
+        # XXX This should be a weakref I guess?
+        self._rect = CSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        # When this widget's size/pos change, the rectangle should change as well.
+        def set_rect_size(w, h):
+            self._rect.size = (w, h)
+        self.connect('on_resize', set_rect_size)
+        def set_rect_pos(x, y):
+            self._rect.pos = (x, y)
+        self.connect('on_move', set_rect_pos)
 
         self.init()
 
@@ -351,9 +362,10 @@ class MTWidget(EventDispatcher):
 
     def draw(self):
         '''Handle the draw of widget.
-        Derivate this method to draw your widget.'''
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        Derive from this method to draw your widget.'''
+        # Trigger rebuild of the rect if something changed
+        self._rect.style = self.style
+        self._rect.draw()
 
     def add_widget(self, w, front=True):
         '''Add a widget in the children list.'''
@@ -369,7 +381,6 @@ class MTWidget(EventDispatcher):
     def add_widgets(self, *widgets):
         for w in widgets:
             self.add_widget(w)
-
 
     def remove_widget(self, w):
         '''Remove a widget from the children list'''
@@ -450,6 +461,7 @@ class MTWidget(EventDispatcher):
         if super(MTWidget, self)._set_height(x):
             self.dispatch_event('on_resize', *self._size)
             return True
+
 
 
 # Register all base widgets
