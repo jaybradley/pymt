@@ -397,7 +397,7 @@ class Rectangle(GraphicElement):
 
     ..warning ::
         Each time you change one property of the rectangle, vertex list is
-        automaticly rebuilded at the next draw() call. 
+        automaticly builded at the next draw() call. 
 
     :Parameters:
         `pos`: list, default to (0, 0)
@@ -413,7 +413,7 @@ class Rectangle(GraphicElement):
             Can be used to specify a color for each vertex drawed.
     '''
     __slots__ = ('_pos', '_size', '_texture', '_tex_coords', '_colors_coords',
-                 '_need_rebuild', '_stmt')
+                 '_need_build', '_stmt')
     def __init__(self, **kwargs):
         kwargs.setdefault('type', 'quads')
         kwargs.setdefault('pos', (0, 0))
@@ -436,13 +436,13 @@ class Rectangle(GraphicElement):
         self._texture = kwargs.get('texture')
         self._tex_coords = kwargs.get('tex_coords')
         self._colors_coords = kwargs.get('colors_coords')
-        self._need_rebuild = True
+        self._need_build = True
         self._stmt = None
         if self._texture:
             self._stmt = gx_texture(self._texture)
 
-    def rebuild(self):
-        '''Rebuild all the vbos. This is automaticly called when a property
+    def build(self):
+        '''Build all the vbos. This is automaticly called when a property
         change (position, size, tex_coords...)'''
         # build vertex
         x, y = self.pos
@@ -467,9 +467,9 @@ class Rectangle(GraphicElement):
             self.data_c = self.colors_coords
 
     def draw(self):
-        if self._need_rebuild:
-            self.rebuild()
-            self._need_rebuild = False
+        if self._need_build:
+            self.build()
+            self._need_build = False
         stmt = self._stmt
         if stmt:
             stmt.bind()
@@ -483,7 +483,7 @@ class Rectangle(GraphicElement):
         if self._size == size:
             return False
         self._size = size
-        self._need_rebuild = True
+        self._need_build = True
         return True
     size = property(lambda self: self._get_size(),
                     lambda self, x: self._set_size(x),
@@ -495,7 +495,7 @@ class Rectangle(GraphicElement):
         if self._size[0] == w:
             return False
         self._size = (w, self._size[1])
-        self._need_rebuild = True
+        self._need_build = True
         return True
     width = property(lambda self: self._get_width(),
                      lambda self, x: self._set_width(x),
@@ -507,7 +507,7 @@ class Rectangle(GraphicElement):
         if self._size[1] == h:
             return False
         self._size = (self._size[0], h)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     height = property(lambda self: self._get_height(),
                      lambda self, x: self._set_height(x),
@@ -519,7 +519,7 @@ class Rectangle(GraphicElement):
         if pos == self._pos:
             return False
         self._pos = tuple(pos)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     pos = property(lambda self: self._get_pos(),
                    lambda self, x: self._set_pos(x),
@@ -531,7 +531,7 @@ class Rectangle(GraphicElement):
         if x == self.pos[0]:
             return False
         self._pos = (x, self.y)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     x = property(lambda self: self._get_x(),
                  lambda self, x: self._set_x(x),
@@ -543,7 +543,7 @@ class Rectangle(GraphicElement):
         if y == self.pos[1]:
             return False
         self._pos = (self.x, y)
-        self._need_rebuild = True
+        self._need_build = True
         return True
     y = property(lambda self: self._get_y(),
                  lambda self, x: self._set_y(x),
@@ -574,7 +574,7 @@ class Rectangle(GraphicElement):
         return self._tex_coords
     def _set_tex_coords(self, x):
         self._tex_coords = x
-        self._need_rebuild = True
+        self._need_build = True
     tex_coords = property(
         lambda self: self._get_tex_coords(),
         lambda self, x: self._set_tex_coords(x),
@@ -588,7 +588,7 @@ class Rectangle(GraphicElement):
         return self._colors_coords
     def _set_colors_coords(self, x):
         self._colors_coords = x
-        self._need_rebuild = True
+        self._need_build = True
     colors_coords = property(
         lambda self: self._get_colors_coords(),
         lambda self, x: self._set_colors_coords(x),
@@ -623,7 +623,7 @@ class RoundedRectangle(Rectangle):
         self._precision = kwargs.get('precision')
         self._radius = kwargs.get('radius')
 
-    def rebuild(self):
+    def build(self):
         radius = self._radius
         precision = self._precision
         cbl, cbr, ctr, ctl = self._corners
@@ -688,7 +688,7 @@ class RoundedRectangle(Rectangle):
         if len(x) != 4:
             raise Exception('Must have 4 boolean inside the corners list')
         self._corners = x
-        self._need_rebuild = True
+        self._need_build = True
     corners = property(
         lambda self: self._get_corners(),
         lambda self, x: self._set_corners(x),
@@ -699,7 +699,7 @@ class RoundedRectangle(Rectangle):
         return self._precision
     def _set_precision(self, x):
         self._precision = x
-        self._need_rebuild = True
+        self._need_build = True
     precision = property(
         lambda self: self._get_precision(),
         lambda self, x: self._set_precision(x),
@@ -710,7 +710,7 @@ class RoundedRectangle(Rectangle):
         return self._radius
     def _set_radius(self, x):
         self._radius = x
-        self._need_rebuild = True
+        self._need_build = True
     radius = property(
         lambda self: self._get_radius(),
         lambda self, x: self._set_radius(x),
