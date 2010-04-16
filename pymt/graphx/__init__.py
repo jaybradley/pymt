@@ -584,6 +584,8 @@ class Rectangle(GraphicElement):
     def _get_texture(self):
         return self._texture
     def _set_texture(self, x):
+        if self._texture == x:
+            return
         self._texture = x
         if self._texture:
             self._stmt = gx_texture(self._texture)
@@ -596,6 +598,8 @@ class Rectangle(GraphicElement):
     def _get_tex_coords(self):
         return self._tex_coords
     def _set_tex_coords(self, x):
+        if self._tex_coords == x:
+            return
         self._tex_coords = x
         self._need_build = True
     tex_coords = property(
@@ -610,6 +614,8 @@ class Rectangle(GraphicElement):
     def _get_colors_coords(self):
         return self._colors_coords
     def _set_colors_coords(self, x):
+        if self._colors_coords == x:
+            return
         self._colors_coords = x
         self._need_build = True
     colors_coords = property(
@@ -706,6 +712,8 @@ class RoundedRectangle(Rectangle):
     def _get_corners(self):
         return self._corners
     def _set_corners(self, x):
+        if self._corners == x:
+            return
         if type(x) not in (list, tuple):
             raise Exception('Invalid corner type')
         if len(x) != 4:
@@ -721,6 +729,8 @@ class RoundedRectangle(Rectangle):
     def _get_precision(self):
         return self._precision
     def _set_precision(self, x):
+        if self._precision == x:
+            return
         self._precision = x
         self._need_build = True
     precision = property(
@@ -732,6 +742,8 @@ class RoundedRectangle(Rectangle):
     def _get_radius(self):
         return self._radius
     def _set_radius(self, x):
+        if self._radius == x:
+            return
         self._radius = x
         self._need_build = True
     radius = property(
@@ -805,6 +817,8 @@ class Color(GraphicInstruction):
     def _get_color(self):
         return self._color
     def _set_color(self, x):
+        if self._color == x:
+            return
         self._color = x
         self._need_build = True
     color = property(
