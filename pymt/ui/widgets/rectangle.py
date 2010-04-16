@@ -1,14 +1,13 @@
 '''
-Rectangle widget: draw a rectangle of his pos/size
+Rectangle widget: A widget that is represented by a rectangle of identical
+                  size and position and only handles touches inside itself.
 '''
-
 
 __all__ = ['MTRectangularWidget']
 
-from ...graphx import set_color
-from ...graphx import drawCSSRectangle
 from ..factory import MTWidgetFactory
 from widget import MTWidget
+
 
 class MTRectangularWidget(MTWidget):
     '''A rectangular widget that only propagates and handles
@@ -16,6 +15,7 @@ class MTRectangularWidget(MTWidget):
     '''
     def __init__(self, **kwargs):
         super(MTRectangularWidget, self).__init__(**kwargs)
+        self.style['draw-background'] = True
 
     def on_touch_down(self, touch):
         if self.collide_point(touch.x, touch.y):
@@ -32,8 +32,5 @@ class MTRectangularWidget(MTWidget):
             super(MTRectangularWidget, self).on_touch_up(touch)
             return True
 
-    def draw(self):
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
 
 MTWidgetFactory.register('MTRectangularWidget', MTRectangularWidget)
