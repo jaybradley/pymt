@@ -8,7 +8,7 @@ __all__ = ['MTStencilContainer']
 
 from OpenGL.GL import *
 from widget import MTWidget
-from ...graphx import drawRectangle, stencilPush, stencilPop, stencilUse
+from ...graphx import stencilPush, stencilPop, stencilUse, Rectangle
 from ..factory import MTWidgetFactory
 
 stencil_stack = 0
@@ -25,13 +25,18 @@ class MTStencilContainer(MTWidget):
         w.add_widget(s)
         runTouchApp()
     '''
+    __slots__ = ('_rectangle', )
     def __init__(self, **kwargs):
         super(MTStencilContainer, self).__init__(**kwargs)
+        self._rectangle = Rectangle()
 
     def stencil_push(self):
         stencilPush()
         # draw on stencil
-        drawRectangle(pos=self.pos, size=self.size)
+        r = self._rectangle
+        r.pos = self.pos
+        r.size = self.size
+        r.draw()
         # switch drawing to color buffer.
         stencilUse()
 

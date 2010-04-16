@@ -4,7 +4,7 @@ Side panel: a panel widget that attach to a side of the screen
 
 __all__ = ('MTSidePanel', )
 
-from ...graphx import drawCSSRectangle, set_color
+from ...graphx import CSSRectangle
 from ...utils import curry
 from ..factory import MTWidgetFactory
 from ..animation import Animation
@@ -189,8 +189,11 @@ class MTSidePanel(MTWidget):
     def draw(self):
         if not self.layout.visible:
             return
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.layout.pos, size=self.layout.size, style=self.style)
+        background = self._background
+        background.style = self.style
+        background.pos = self.layout.pos
+        background.size = self.layout.size
+        background.draw()
 
     # optimization
 

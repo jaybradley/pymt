@@ -820,7 +820,6 @@ class Color(GraphicInstruction):
         if self._color == x:
             return
         self._color = x
-        self._need_build = True
     color = property(
         lambda self: self._get_color(),
         lambda self, x: self._set_color(x),
@@ -1120,6 +1119,10 @@ class Canvas(object):
     def restore(self):
         '''Restore the previous saved context'''
         self.add(GraphicContextRestore())
+
+    @property
+    def objects(self):
+        return self._batch
 
     # facilities to create object
     def line(self, *largs, **kwargs):

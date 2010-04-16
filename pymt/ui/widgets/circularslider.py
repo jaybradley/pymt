@@ -114,7 +114,7 @@ class MTCircularSlider(MTWidget):
             glTranslated(self.pos[0], self.pos[1], 0)
             glRotatef(-self.rotation, 0, 0, 1)
             drawSemiCircle((0,0),self.radius-self.thickness,self.radius,32,1,0,self.sweep_angle)
-            set_color(*self.style.get('slider-color'))
+            set_color(*self.style.get('slider-bg-color'))
             drawSemiCircle((0,0),self.radius-self.thickness+self.padding,self.radius-self.padding,32,1,0,self.slider_fill_angle)
 
     def _get_value(self,value):

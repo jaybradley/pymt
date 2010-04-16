@@ -28,7 +28,7 @@ def screen_button(w):
 
 @registerscreen('Buttons Matrix')
 def screen_buttonmatrix(w):
-    bmx = MTButtonMatrix(matrix_size=(10,10), size=(500, 500))
+    bmx = MTButtonMatrix(matrix_size=(20,20), size=(500, 500))
     w.add_widget(bmx)
 
 

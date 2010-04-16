@@ -5,8 +5,6 @@ Modal window: stop all interaction with background widget
 
 __all__ = ['MTModalWindow']
 
-from ...graphx import set_color
-from ...graphx import drawCSSRectangle
 from ..factory import MTWidgetFactory
 from widget import MTWidget
 
@@ -30,14 +28,12 @@ class MTModalWindow(MTWidget):
         super(MTModalWindow, self).on_touch_up(*largs)
         return True
 
-    def draw(self):
+    def on_update(self):
+        self.pos = 0, 0
         w = self.get_parent_window()
-        if not w:
-            return
-        self.size = w.size
-        set_color(*self.style['bg-color'])
-        drawCSSRectangle(size=self.size, style=self.style)
-
+        if w:
+            self.size = w.size
+        return super(MTModalWindow, self).on_update()
 
 # Register all base widgets
 MTWidgetFactory.register('MTModalWindow', MTModalWindow)

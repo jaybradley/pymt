@@ -5,9 +5,9 @@ Flippable Widget: A widget with 2 sides who can flip between the sides.
 
 __all__ = ['MTFlippableWidget']
 
-from OpenGL.GL import *
+from OpenGL.GL import glTranslatef, glRotatef
 from ..factory import MTWidgetFactory
-from ...graphx import gx_matrix, drawCSSRectangle, set_color
+from ...graphx import gx_matrix
 from widget import MTWidget
 from ..animation import Animation, AnimationAlpha
 from ...utils import SafeList
@@ -82,10 +82,6 @@ class MTFlippableWidget(MTWidget):
             w.parent = self
         except:
             pass
-
-    def draw(self):
-        set_color(self.style.get('bg-color'))
-        drawCSSRectangle(pos=(0,0), size=self.size, style=self.style)
 
     def flip_children(self):
         # This has to be called exactly half way through the animation

@@ -6,7 +6,7 @@ Label: a simple text label
 __all__ = ['MTLabel']
 
 import pymt
-from ...graphx import drawLabel, set_color, drawCSSRectangle, getLabel, getLastLabel
+from ...graphx import drawLabel, getLabel, getLastLabel
 from ..factory import MTWidgetFactory
 from widget import MTWidget
 
@@ -141,8 +141,8 @@ class MTLabel(MTWidget):
 
     def draw_background(self):
         '''Draw the background of the widget'''
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        # exactly the same as MTWidget one.
+        super(MTLabel, self).draw()
 
     def _update_size(self, w, h):
         if (self.autoheight and self.autowidth) or self.autosize:

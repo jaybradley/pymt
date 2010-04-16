@@ -6,9 +6,9 @@ Scatter package: provide lot of widgets based on scatter (base, svg, plane, imag
 __all__ = ['MTScatterWidget', 'MTScatterSvg', 'MTScatterPlane', 'MTScatterImage']
 
 import pymt
-from OpenGL.GL import *
-from ...graphx import drawRectangle, drawCSSRectangle, gx_matrix, gx_matrix_identity, set_color, \
-    drawTexturedRectangle, gx_blending
+from OpenGL.GL import glTranslatef, glRotatef, glScalef, glMultMatrixf, \
+    glGetFloatv, GL_MODELVIEW_MATRIX, GLfloat
+from ...graphx import CSSRectangle, gx_matrix, gx_matrix_identity
 from ...vector import Vector, matrix_mult, matrix_inv_mult
 from ...utils import SafeList, deprecated
 from ..animation import Animation, AnimationAlpha
@@ -91,8 +91,7 @@ class MTScatterWidget(MTWidget):
         self.__width = 0
         self.__height = 0
 
-        self.children = SafeList()
-
+        self._background    = CSSRectangle()
         self.touches        = {}
         self._scale         = 1.
         self._rotation      = 0.
@@ -130,8 +129,10 @@ class MTScatterWidget(MTWidget):
             self.transform_mat = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     def draw(self):
-        set_color(*self.style['bg-color'])
-        drawCSSRectangle((0,0), (self.width, self.height), style=self.style)
+        background = self._background
+        background.size = self.size
+        background.style = self.style
+        background.draw()
 
     def on_draw(self):
         if not self.visible:

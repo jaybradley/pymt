@@ -5,8 +5,6 @@ Rectangle widget: draw a rectangle of his pos/size
 
 __all__ = ['MTRectangularWidget']
 
-from ...graphx import set_color
-from ...graphx import drawCSSRectangle
 from ..factory import MTWidgetFactory
 from widget import MTWidget
 
@@ -31,9 +29,5 @@ class MTRectangularWidget(MTWidget):
         if self.collide_point(touch.x, touch.y):
             super(MTRectangularWidget, self).on_touch_up(touch)
             return True
-
-    def draw(self):
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
 
 MTWidgetFactory.register('MTRectangularWidget', MTRectangularWidget)

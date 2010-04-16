@@ -1,17 +1,18 @@
 from ...factory import MTWidgetFactory
-from ....graphx import set_color
 from ....base import getFrameDt
-from ....graphx import drawLabel, drawRectangle
+from ....graphx import Rectangle, Color
 from ....core.text import Label
 from textinput import MTTextInput
 from OpenGL.GL import glPushMatrix, glPopMatrix, glTranslate
 
 class MTTextArea(MTTextInput):
-    ''' A multi line text input widget'''
+    '''A multi line text input widget'''
     def __init__(self, **kwargs):
         super(MTTextArea, self).__init__(**kwargs)
         self.value = kwargs.get('label') or ''
         self.buffer_size = kwargs.get('buffer_size') or 128000
+        self._cursor = Rectangle(prefix='cursor')
+        self._color = Color(0)
         
     def _get_value(self):
         try:
@@ -74,8 +75,12 @@ class MTTextArea(MTTextInput):
         return offset
 
     def draw_cursor(self):
-        set_color(1,0,0, int(self.cursor_fade))
-        drawRectangle(size=(2, -self.line_height), pos=(self.cursor_offset(),0))
+        self._color.color = 1, 0, 0, self.cursor_fade
+        self._cursor.pos = self.cursor_offset(), 0
+        self._cursor.size = 2, -self.line_height
+
+        self._color.draw()
+        self._cursor.draw()
 
     def draw(self):
         super(MTTextArea, self).draw_background()

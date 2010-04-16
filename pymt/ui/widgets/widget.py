@@ -10,6 +10,7 @@ __all__ = ['getWidgetById','getWidgetByID',
 import sys
 import os
 import weakref
+from ...graphx import CSSRectangle
 from ...event import EventDispatcher
 from ...logger import pymt_logger
 from ...base import getCurrentTouches
@@ -18,7 +19,6 @@ from ...utils import SafeList
 from ..animation import Animation, AnimationAlpha
 from ..factory import MTWidgetFactory
 from ..colors import css_get_style
-from ...graphx import set_color, drawCSSRectangle
 
 _id_2_widget = {}
 
@@ -102,6 +102,7 @@ class MTWidget(EventDispatcher):
                  '_parent_layout_source', '_parent_layout',
                  '_size_hint', '_id', '_parent',
                  '_visible', '_inline_style',
+                 '_background',
                  '__weakref__')
 
     visible_events = [
@@ -135,8 +136,9 @@ class MTWidget(EventDispatcher):
         for ev in MTWidget.visible_events:
             self.register_event_type(ev)
 
-        self._parent              = None
         self.children             = SafeList()
+        self._background          = CSSRectangle()
+        self._parent              = None
         self._visible             = False
         self._size_hint           = kwargs.get('size_hint')
         self.visible              = kwargs.get('visible')
@@ -229,6 +231,7 @@ class MTWidget(EventDispatcher):
         '''Called at __init__ time to applied css attribute in current class.
         '''
         self.style.update(styles)
+        self._background.style = self.style
 
     def reload_css(self, styles):
         '''Called when css want to be reloaded from scratch'''
@@ -352,8 +355,7 @@ class MTWidget(EventDispatcher):
     def draw(self):
         '''Handle the draw of widget.
         Derivate this method to draw your widget.'''
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        self._background.draw()
 
     def add_widget(self, w, front=True):
         '''Add a widget in the children list.'''
@@ -387,10 +389,12 @@ class MTWidget(EventDispatcher):
         pass
 
     def on_resize(self, w, h):
+        self._background.size = w, h
         for c in self.children.iterate():
             c.dispatch_event('on_parent_resize', w, h)
 
     def on_move(self, x, y):
+        self._background.pos = x, y
         for c in self.children.iterate():
             c.dispatch_event('on_move', x, y)
 

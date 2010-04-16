@@ -474,9 +474,7 @@ class MTKineticList(MTStencilContainer):
         self.ensure_bounding()
 
     def draw(self):
-        # background
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        super(MTKineticList, self).draw()
 
         # draw children
         self.stencil_push()

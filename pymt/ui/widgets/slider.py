@@ -4,12 +4,11 @@ Slider package: provide multiple slider implementation (simple, xy, boundary...)
 
 from __future__ import division
 
-import random
-__all__ = ['MTSlider', 'MTXYSlider', 'MTBoundarySlider', 'MTMultiSlider']
+__all__ = ('MTSlider', 'MTXYSlider', 'MTBoundarySlider', 'MTMultiSlider')
 
-from OpenGL.GL import *
-from ...graphx import drawRectangle, drawCircle, drawLabel, set_color, drawRoundedRectangle, drawRectangleAlpha, drawRoundedRectangleAlpha
-from ...graphx import drawCSSRectangle
+import random
+from ...graphx import drawCircle, drawLabel, set_color
+from ...graphx import CSSRectangle, Canvas
 from ..factory import MTWidgetFactory
 from widget import MTWidget
 
@@ -32,8 +31,8 @@ class MTSlider(MTWidget):
         `value_config` : dict, default to {}
             Settings to pass to drawLabel()
     :Styles:
-        `slider-color` : color
-            Color of the slider
+        `slider-bg-color` : color
+            Color of the slider background
         `bg-color` : color
             Background color of the slider
         `padding` : int
@@ -56,8 +55,12 @@ class MTSlider(MTWidget):
             kwargs.setdefault('size', (400, 30))
         kwargs.setdefault('value', None)
 
+        self._g_slider      = CSSRectangle(prefix='slider')
+
         super(MTSlider, self).__init__(**kwargs)
+
         self.register_event_type('on_value_change')
+        self._need_update   = True
         self.touchstarts    = [] # only react to touch input that originated on this widget
         self.orientation    = kwargs.get('orientation')
         self.min            = kwargs.get('min')
@@ -69,8 +72,20 @@ class MTSlider(MTWidget):
         if kwargs.get('value'):
             self._value = kwargs.get('value')
 
+    def apply_css(self, style):
+        super(MTSlider, self).apply_css(style)
+        self._g_slider.style = style
+
     def on_value_change(self, value):
-        pass
+        self._need_update = True
+
+    def on_move(self, *largs):
+        super(MTSlider, self).on_move(*largs)
+        self._need_update = True
+
+    def on_resize(self, *largs):
+        super(MTSlider, self).on_resize(*largs)
+        self._need_update = True
 
     def set_value(self, _value):
         self._value = _value
@@ -79,25 +94,29 @@ class MTSlider(MTWidget):
         return self._value
     value = property(get_value, set_value, doc='Value of the slider')
 
+    def on_update(self):
+        super(MTSlider, self).on_update()
+        # need graphic update ?
+        if self._need_update:
+            p2 = self.style['padding'] / 2
+            if self.orientation == 'vertical':
+                pos = self.x + p2, self.y + p2
+                length = int((self._value - self.min) * (self.height - self.style['padding']) / (self.max - self.min))
+                size = self.width - self.style['padding'], length
+            else:
+                length = int((self._value - self.min) * (self.width - self.style['padding']) / (self.max - self.min))
+                size = length, self.height - self.style['padding']
+                pos = self.x + p2, self.y + p2
+            self._g_slider.pos = pos
+            self._g_slider.size = size
+            self._need_update = False
+
     def draw(self):
-        p2 = self.style['padding'] / 2
-        if self.orientation == 'vertical':
-            length = int((self._value - self.min) * (self.height - self.style['padding']) / (self.max - self.min))
-            pos = self.x + p2, self.y + p2
-            size = self.width - self.style['padding'], length
-        else:
-            length = int((self._value - self.min) * (self.width - self.style['padding']) / (self.max - self.min))
-            pos = self.x + p2, self.y + p2
-            size = length, self.height - self.style['padding']
+        # draw background
+        super(MTSlider, self).draw()
 
-        # draw outer rectangle
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
-
-        # draw inner rectangle
-        set_color(*self.style.get('slider-color'))
-        drawCSSRectangle(pos=pos, size=size, style=self.style, prefix='slider')
-
+        # draw slider and value
+        self._g_slider.draw()
         if self.value_show:
             self.draw_value()
 
@@ -132,6 +151,7 @@ class MTSlider(MTWidget):
         if touch.id in self.touchstarts:
             self.touchstarts.remove(touch.id)
         return super(MTSlider, self).on_touch_up(touch)
+
 
 class MTXYSlider(MTWidget):
     '''MTXYSlider is an implementation of a 2D slider using MTWidget.
@@ -202,12 +222,11 @@ class MTXYSlider(MTWidget):
     value_y = property(get_value_y, set_value_y, doc='Value of the slider (y axis)')
 
     def draw(self):
-        # draw outer rectangle
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
+        # draw background
+        super(MTXYSlider, self).draw()
 
         # draw inner circle
-        set_color(*self.style.get('slider-color'))
+        set_color(*self.style.get('slider-bg-color'))
         pos_x = int((self._value_x - self.min_x) * (self.width - self.padding*2) / (self.max_x - self.min_x))  + self.x + self.padding
         pos_y = int((self._value_y - self.min_y) * (self.height - self.padding*2) / (self.max_y - self.min_y)) + self.y + self.padding
         drawCircle(pos=(pos_x, pos_y), radius=self.radius)
@@ -278,6 +297,8 @@ class MTBoundarySlider(MTWidget):
         else:
             kwargs.setdefault('size', (400, 30))
 
+        self._g_slider      = CSSRectangle(prefix='slider')
+
         super(MTBoundarySlider, self).__init__(**kwargs)
         self.register_event_type('on_value_change')
         self.touchstarts    = [] # only react to touch input that originated on this widget
@@ -321,7 +342,19 @@ class MTBoundarySlider(MTWidget):
         return tmin, tmax
 
     def on_value_change(self, min, max):
-        pass
+        self._need_update = True
+
+    def apply_css(self, style):
+        super(MTBoundarySlider, self).apply_css(style)
+        self._g_slider.style = style
+
+    def on_move(self, *largs):
+        self._need_update = True
+        return super(MTBoundarySlider, self).on_move(*largs)
+
+    def on_resize(self, *largs):
+        self._need_update = True
+        return super(MTBoundarySlider, self).on_resize(*largs)
 
     @property
     def ratio(self):
@@ -329,27 +362,30 @@ class MTBoundarySlider(MTWidget):
             return self.height / (self.max - self.min)
         return self.width / (self.max - self.min)
 
+    def on_update(self):
+        super(MTBoundarySlider, self).on_update()
+        if self._need_update:
+            self._need_update = False
+            p = self.style['padding']
+            p2 = p / 2
+            if self.orientation == 'vertical':
+                pos = (self.x + p2, self.y + self.value_min * self.ratio + p2)
+                size = (self.width - p, (self.value_max - self.value_min) * self.ratio - p)
+            elif self.orientation == 'horizontal':
+                pos = (self.x + self.value_min * self.ratio + p2, self.y + p2)
+                size = ((self.value_max - self.value_min) * self.ratio - p, self.height - p)
+            self._g_slider.pos = pos
+            self._g_slider.size = size
+
     def draw(self):
-        p = self.style['padding']
-        p2 = p / 2
+        super(MTBoundarySlider, self).draw()
+        self._g_slider.draw()
         if self.orientation == 'vertical':
-            pos = (self.x + p2, self.y + self.value_min * self.ratio + p2)
-            size = (self.width - p, (self.value_max - self.value_min) * self.ratio - p)
             textposmin = (self.x + self.width, self.y + self.value_min * self.ratio)
             textposmax = (self.x + self.width, self.y + self.value_max * self.ratio)
         elif self.orientation == 'horizontal':
-            pos = (self.x + self.value_min * self.ratio + p2, self.y + p2)
-            size = ((self.value_max - self.value_min) * self.ratio - p, self.height - p)
             textposmin = (self.x + self.value_min * self.ratio, self.y + self.height)
             textposmax = (self.x + self.value_max * self.ratio, self.y + self.height)
-
-        # draw outer rectangle
-        set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
-
-        # draw inner rectangle
-        set_color(*self.style.get('slider-color'))
-        drawCSSRectangle(pos=pos, size=size, style=self.style, prefix='slider')
         if self.showtext and len(self.touchstarts):
             drawLabel(u'%.1f' % (self.value_min), pos=textposmin, font_size=self.style['font-size'])
             drawLabel(u'%.1f' % (self.value_max), pos=textposmax, font_size=self.style['font-size'])
@@ -434,7 +470,7 @@ class MTMultiSlider(MTWidget):
             Start value of all sliders
 
     :Styles:
-        `slider-color` : color
+        `slider-bg-color` : color
             Color of slider
         `bg-color` : color
             Background color of slider
@@ -457,6 +493,9 @@ class MTMultiSlider(MTWidget):
         self._spacing = kwargs.get('spacing')
         self._init_value = kwargs.get('init_value')
         self.slider_values = [self._init_value for x in range(self._sliders)]
+        self._canvas = Canvas()
+        self._need_update = True
+        self.build()
 
     def _get_sliders(self):
         return self._sliders
@@ -478,21 +517,45 @@ class MTMultiSlider(MTWidget):
         self._spacing = spacing
     spacing = property(_get_spacing, _set_spacing)
 
+    def on_move(self, *largs):
+        self._need_update = True
+        return super(MTMultiSlider, self).on_move(*largs)
+
+    def on_resize(self, *largs):
+        self._need_update = True
+        return super(MTMultiSlider, self).on_resize(*largs)
+
+    def on_update(self):
+        super(MTMultiSlider, self).on_update()
+        if self._need_update:
+            self._need_update = False
+            # update position of sliders
+            c = self._canvas
+            for slider in xrange(self._sliders):
+                pos_x = self.x + slider * (float(self.width) / self._sliders)
+                pos_y = self.y
+                size_x = (float(self.width) / self._sliders) - self._spacing
+                size_y = self.height * self.slider_values[slider]
+                c.objects[slider].pos = pos_x, pos_y
+                c.objects[slider].size = size_x, size_y
+
     def draw(self):
-        # Draw background
-        set_color(*self.style.get('bg-color'))
-        drawRectangle(pos=(self.x,self.y), size=(self.width,self.height))
-        # Draw sliders
-        set_color(*self.style.get('slider-color'))
-        for slider in range(self._sliders):
+        super(MTMultiSlider, self).draw()
+        self._canvas.draw()
+
+    def build(self):
+        self._canvas.clear()
+        c = self._canvas
+        for slider in xrange(self._sliders):
             pos_x = self.x + slider * (float(self.width) / self._sliders)
             pos_y = self.y
             size_x = (float(self.width) / self._sliders) - self._spacing
             size_y = self.height * self.slider_values[slider]
-            drawRectangle(pos = (pos_x, pos_y), size = (size_x, size_y))
+            c.cssRectangle(pos=(pos_x, pos_y), size=(size_x, size_y),
+                           style=self.style, prefix='slider')
 
     def on_value_change(self, value):
-        pass
+        self._need_update = True
 
     def on_touch_down(self, touch):
         if self.collide_point(touch.x, touch.y):
