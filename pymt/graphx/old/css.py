@@ -10,6 +10,7 @@ from colors import set_color
 from pymt.cache import Cache
 from statement import GlDisplayList, gx_color
 from OpenGL.GL import *
+from pymt.utils import deprecated
 
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.cssrect', limit=100, timeout=60)

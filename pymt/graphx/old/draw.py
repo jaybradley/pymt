@@ -21,6 +21,7 @@ from OpenGL.GLU import gluNewQuadric, gluDisk, gluPartialDisk
 from paint import *
 from statement import *
 from colors import *
+from pymt.utils import deprecated
 
 try:
     import _graphx
