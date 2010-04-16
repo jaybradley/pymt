@@ -14,6 +14,7 @@ from OpenGL.GL import *
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.cssrect', limit=100, timeout=60)
 
+@deprecated
 def drawCSSRectangle(pos=(0,0), size=(100,100), style={}, prefix=None, state=None):
     '''Draw a rectangle with CSS
     

@@ -33,6 +33,7 @@ _temp_label = None
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.label', timeout=1., limit=1000)
 
+@deprecated
 def _make_point_list(points):
     t = type(points)
     if not t in (tuple, list):
@@ -43,6 +44,7 @@ def _make_point_list(points):
     else:
         return list(points)
 
+@deprecated
 def getLabel(label, **kwargs):
     '''Get a cached label object
 
@@ -85,6 +87,7 @@ def getLabel(label, **kwargs):
 
     return obj
 
+@deprecated
 def drawLabel(label, pos=(0,0), **kwargs):
     '''Draw a label on the window.
 
@@ -107,10 +110,12 @@ def drawLabel(label, pos=(0,0), **kwargs):
     _temp_label.draw()
     return _temp_label.content_size
 
+@deprecated
 def getLastLabel():
     global _temp_label
     return _temp_label
 
+@deprecated
 def drawRoundedRectangle(pos=(0,0), size=(100,50), radius=5, color=None,
                          linewidth=0, precision=0.5, style=GL_POLYGON,
                          corners=(True, True, True, True)):
@@ -211,6 +216,7 @@ def drawRoundedRectangle(pos=(0,0), size=(100,50), radius=5, color=None,
         glPopAttrib()
 
 
+@deprecated
 def drawCircle(pos=(0,0), radius=1.0, linewidth=0):
     '''Draw a simple circle
 
@@ -229,6 +235,7 @@ def drawCircle(pos=(0,0), radius=1.0, linewidth=0):
         else:
             gluDisk(gluNewQuadric(), 0, 1, 32,1)
 
+@deprecated
 def drawPolygon(points, style=GL_POLYGON, linewidth=0):
     '''Draw polygon from points list
 
@@ -267,6 +274,7 @@ def drawPolygon(points, style=GL_POLYGON, linewidth=0):
         glPopAttrib()
 
 
+@deprecated
 def drawTriangle(pos, w, h, style=None, linewidth=0):
     '''Draw one triangle
 
@@ -287,6 +295,7 @@ def drawTriangle(pos, w, h, style=None, linewidth=0):
     points = [pos[0]-w/2, pos[1], pos[0]+w/2, pos[1], pos[0], pos[1]+h]
     drawPolygon(points, style, linewidth)
 
+@deprecated
 def drawRectangle(pos=(0,0), size=(1.0,1.0), style=GL_QUADS):
     '''Draw a simple rectangle
 
@@ -309,6 +318,7 @@ def drawRectangle(pos=(0,0), size=(1.0,1.0), style=GL_QUADS):
         glVertex2f(pos[0] + size[0], pos[1] + size[1])
         glVertex2f(pos[0], pos[1] + size[1])
 
+@deprecated
 def drawTexturedRectangle(texture, pos=(0,0), size=(1.0,1.0),
                           tex_coords=None, color_coords=None):
     '''Draw a rectangle with a texture.
@@ -381,6 +391,7 @@ def drawTexturedRectangle(texture, pos=(0,0), size=(1.0,1.0),
     if texture:
         stmt.release()
 
+@deprecated
 def drawLine(points, width=None, colors=[]):
     '''Draw a line
 
@@ -423,6 +434,7 @@ def drawLine(points, width=None, colors=[]):
     if width is not None:
         glPopAttrib()
 
+@deprecated
 def drawRoundedRectangleAlpha(pos=(0,0), size=(100,50), radius=5, alpha=(1,1,1,1),
                          precision=0.5, style=GL_TRIANGLE_FAN):
     '''Draw a rounded rectangle alpha layer.
@@ -506,6 +518,7 @@ def drawRoundedRectangleAlpha(pos=(0,0), size=(100,50), radius=5, alpha=(1,1,1,1
             t += precision
         glVertex2f(x + radius, y)
 
+@deprecated
 def drawRectangleAlpha(pos=(0,0), size=(1.0,1.0), alpha=(1,1,1,1), style=GL_QUADS):
     '''Draw an rectangle alpha layer.
 
@@ -537,6 +550,7 @@ def drawRectangleAlpha(pos=(0,0), size=(1.0,1.0), alpha=(1,1,1,1), style=GL_QUAD
         glColor4f(1, 1, 1, alpha[3])
         glVertex2f(pos[0], pos[1] + size[1])
 
+@deprecated
 def drawSemiCircle(pos=(0,0), inner_radius=100, outer_radius=120, slices=32, loops=1, start_angle=0, sweep_angle=360):
     '''Draw a semi-circle. You can choose the start angle,
     and the ending angle (from 0 to 360), and the inner/outer radius !
@@ -559,6 +573,7 @@ def drawSemiCircle(pos=(0,0), inner_radius=100, outer_radius=120, slices=32, loo
         glTranslatef(pos[0], pos[1], 0)
         gluPartialDisk(gluNewQuadric(), inner_radius, outer_radius, slices, loops, start_angle, sweep_angle)
 
+@deprecated
 def drawStippledCircle(pos=(0,0), inner_radius=200, outer_radius=400, segments=10):
     '''
     Draw a stippled circle. A stippled circle consists of several equally-sized
