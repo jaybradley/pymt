@@ -354,7 +354,7 @@ class MTWidget(EventDispatcher):
 
     def draw(self):
         '''Handle the draw of widget.
-        Derivate this method to draw your widget.'''
+        Derive from this method to draw your widget.'''
         self._background.draw()
 
     def add_widget(self, w, front=True):
@@ -371,7 +371,6 @@ class MTWidget(EventDispatcher):
     def add_widgets(self, *widgets):
         for w in widgets:
             self.add_widget(w)
-
 
     def remove_widget(self, w):
         '''Remove a widget from the children list'''
@@ -454,6 +453,7 @@ class MTWidget(EventDispatcher):
         if super(MTWidget, self)._set_height(x):
             self.dispatch_event('on_resize', *self._size)
             return True
+
 
 
 # Register all base widgets

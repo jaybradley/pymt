@@ -103,7 +103,7 @@ def _make_point_list(points):
 
 class GraphicContext(object):
     '''Handle the saving/restore of the context
-    
+
     TODO: explain more how it works
     '''
     __slots__ = ('state', 'stack', 'journal')
@@ -218,7 +218,7 @@ class GraphicElement(GraphicInstruction):
         * e: edge (not yet used)
 
     For each component, VBO are separated.
-    
+
     :Parameters:
         `format`: string, default to None
             The format must be specified at start, and cannot be changed once
@@ -411,8 +411,8 @@ class Rectangle(GraphicElement):
     textured rectangle, rounded rectangle...
 
     ..warning ::
-        Each time you change one property of the rectangle, vertex list is
-        automaticly builded at the next draw() call. 
+        Each time you change a property of the rectangle, the vertex list is
+        rebuilt automatically at the next draw() call.
 
     :Parameters:
         `*values`: list, default to None
@@ -445,7 +445,7 @@ class Rectangle(GraphicElement):
         if kwargs.get('colors_coords'):
             format += 'cccc'
         kwargs.setdefault('format', format)
-        
+
         super(Rectangle, self).__init__(**kwargs)
 
         self._pos = kwargs.get('pos')
@@ -738,7 +738,7 @@ class RoundedRectangle(Rectangle):
         lambda self, x: self._set_precision(x),
         doc='Get/set the precision of the corner'
     )
-    
+
     def _get_radius(self):
         return self._radius
     def _set_radius(self, x):
@@ -805,7 +805,7 @@ class Color(GraphicInstruction):
             pass
         else:
             raise Exception('Unsupported color format')
-            
+
         ctx.color = color
         if color[3] == 1 and not force_blend:
             ctx.blend = False
@@ -1072,7 +1072,7 @@ class CSSRectangle(GraphicInstruction):
     style = property(
         lambda self: self._get_style(),
         lambda self, x: self._set_style(x),
-        doc='Get/Set the css style to use (normally, its the widget.style property'
+        doc='Get/Set the css style to use (normally, its the widget.style property)'
     )
 
 
@@ -1087,7 +1087,7 @@ class Canvas(object):
     def __init__(self, **kwargs):
         self._batch = []
         self._context = default_context
-        
+
     def add(self, graphic):
         '''Add a graphic element to draw'''
         #if isinstance(graphic, GraphicInstruction):
@@ -1149,4 +1149,3 @@ class Canvas(object):
         '''Create a Color() object, and add to the list.
         Check Color() for more information.'''
         return self.add(Color(*largs, **kwargs))
-
