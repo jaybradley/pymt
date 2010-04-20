@@ -753,6 +753,116 @@ class RoundedRectangle(Rectangle):
     )
 
 
+class Circle(GraphicElement):
+    '''
+    Construct a circle from position and radius.
+    The circle can be either filled or not.
+
+    ..warning ::
+        Each time you change a property of the circle, the vertex list is
+        rebuilt automatically at the next draw() call.
+
+    :Parameters:
+        `pos`: list, defaults to (0, 0)
+            Position of the circle
+        `radius`: int, defaults to 5
+            Radius of the circle
+        `filled`: list, default to False
+            Can be used to specify a color for each vertex drawed.
+    '''
+    __slots__ = ('_pos', '_radius', '_need_build')
+    def __init__(self, **kwargs):
+        kwargs.setdefault('type', 'line_loop')
+        kwargs.setdefault('format', 'vv')
+        self._pos = kwargs.setdefault('pos', (0, 0))
+        self._radius = kwargs.setdefault('radius', 5)
+        self._need_build = True
+        super(Circle, self).__init__(**kwargs)
+        f = kwargs.setdefault('filled', False)
+        self.type = self._determine_type(f)
+
+    def build(self):
+        p = array('f')
+        for angle_deg in xrange(361):
+            # rad = deg * (math.pi / 180), where math.pi/180 = 0.0174...
+            angle_rad = angle_deg * 0.017453292519943295
+            # Polar coordinates to cartesian space
+            x = self.x + self._radius * math.cos(angle_rad)
+            y = self.y + self._radius * math.sin(angle_rad)
+            p.append(x)
+            p.append(y)
+        self.data_v = p
+
+    def draw(self):
+        if self._need_build:
+            self.build()
+            self._need_build = False
+        super(Circle, self).draw()
+
+    def _get_radius(self):
+        return self._radius
+    def _set_radius(self, r):
+        if self._radius == r:
+            return False
+        self._radius = r
+        self._need_build = True
+        return True
+    radius = property(lambda self: self._get_radius(),
+                      lambda self, x: self._set_radius(x),
+                      doc='Radius of the circle')
+
+    def _determine_type(self, f):
+        return 'polygon' if f else 'line_strip'
+    def _get_filled(self):
+        return True if self._type == 'polygon' else False
+    def _set_filled(self, f):
+        t = self._determine_type(f)
+        if self.type == t:
+            return False
+        self.type = t
+        self._need_build = True
+        return True
+    filled = property(lambda self: self._get_filled(),
+                      lambda self, f: self._set_filled(f),
+                      doc='Indicates whether the circle is filled or not')
+
+    def _get_pos(self):
+        return self._pos
+    def _set_pos(self, pos):
+        if pos == self._pos:
+            return False
+        self._pos = tuple(pos)
+        self._need_build = True
+        return True
+    pos = property(lambda self: self._get_pos(),
+                   lambda self, x: self._set_pos(x),
+                   doc='Object position (x, y)')
+
+    def _get_x(self):
+        return self._pos[0]
+    def _set_x(self, x):
+        if x == self.pos[0]:
+            return False
+        self._pos = (x, self.y)
+        self._need_build = True
+        return True
+    x = property(lambda self: self._get_x(),
+                 lambda self, x: self._set_x(x),
+                 doc = 'Object X position')
+
+    def _get_y(self):
+        return self._pos[1]
+    def _set_y(self, y):
+        if y == self.pos[1]:
+            return False
+        self._pos = (self.x, y)
+        self._need_build = True
+        return True
+    y = property(lambda self: self._get_y(),
+                 lambda self, x: self._set_y(x),
+                 doc = 'Object Y position')
+
+
 class Color(GraphicInstruction):
     '''Define current color to be used (as float values between 0 and 1) ::
 
