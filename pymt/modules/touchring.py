@@ -3,7 +3,7 @@ Show a circle under all touchs
 '''
 
 import os
-from pymt import MTWidget, set_color, getCurrentTouches, pymt_data_dir, Image
+from pymt import graphx, MTWidget, getCurrentTouches, pymt_data_dir, Image
 
 if not 'PYMT_DOC' in os.environ:
     ring_fn = os.path.join(pymt_data_dir, 'ring.png')
@@ -15,6 +15,8 @@ if not 'PYMT_DOC' in os.environ:
 class TouchRing(MTWidget):
     def __init__(self, **kwargs):
         super(TouchRing, self).__init__(**kwargs)
+        self.color_kinetic = graphx.Color(1, 1, 1, .2)
+        self.color_normal = graphx.Color(1, 1, 1, .7)
 
     def on_update(self):
         self.bring_to_front()
@@ -22,9 +24,9 @@ class TouchRing(MTWidget):
     def draw(self):
         for touch in getCurrentTouches():
             if 'kinetic' in touch.profile:
-                set_color(1, 1, 1, .2)
+                self.color_kinetic.draw()
             else:
-                set_color(1, 1, 1, .7)
+                self.color_normal.draw()
 
             # draw touch
             ring_img.pos = touch.pos
