@@ -760,6 +760,48 @@ class Rectangle(GraphicElement):
         doc='Colors coordinates for each vertex'
     )
 
+class Text(Rectangle):
+    '''Draw a rounded rectangle
+
+    warning.. ::
+        Rounded rectangle support only vertex, not other things right now.
+        It may change in the future.
+
+    :Parameters:
+        `radius` : int, default to 5
+            Radius of corner
+        `precision` : float, default to 0.5
+            Precision of corner angle
+        `corners` : tuple of bool, default to (True, True, True, True)
+            Indicate if round must be draw for each corners
+            starting to bottom-left, bottom-right, top-right, top-left
+    '''
+    __slots__ = ('_label', '_labelobj', '_kwargs')
+    def __init__(self, label, **kwargs):
+        kwargs.setdefault('type', 'quads')
+        kwargs.setdefault('format', 'vvtt')
+        super(Text, self).__init__(**kwargs)
+        self._label = ''
+        self._labelobj = None
+        self._kwargs = kwargs
+        self.label = label
+
+    def _get_label(self):
+        return self._label
+    def _set_label(self, x):
+        if self._label == x:
+            return
+        self._label = x
+        self._labelobj = getLabel(self._label, **self._kwargs)
+        self.texture = self._labelobj.texture
+        self.size = self._labelobj.size
+        self._need_build = True
+    label = property(
+        lambda self: self._get_label(),
+        lambda self, x: self._set_label(x),
+        doc='Colors coordinates for each vertex'
+    )
+
 
 class RoundedRectangle(Rectangle):
     '''Draw a rounded rectangle
@@ -1400,3 +1442,8 @@ class Canvas(object):
         '''Create a Color() object, and add to the list.
         Check Color() for more information.'''
         return self.add(Color(*largs, **kwargs))
+
+    def text(self, *largs, **kwargs):
+        '''Create a Text() object, and add to the list.
+        Check Text() for more information.'''
+        return self.add(Text(*largs, **kwargs))
