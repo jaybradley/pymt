@@ -1209,7 +1209,8 @@ class CSSRectangle(GraphicInstruction):
             })
 
         # set the color of object
-        obj.append(Color(*style['bg-color']))
+        if 'bg-color' in style:
+            obj.append(Color(*style['bg-color']))
 
         # add background object
         if style['draw-background']:
