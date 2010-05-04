@@ -49,8 +49,8 @@ An example with a rectangle + texture ::
 from old import *
 
 import pymt
-import math
 import collections
+from math import sin, cos, sqrt, pi
 from array import array
 from pymt import BaseObject
 from OpenGL.arrays import vbo
@@ -387,7 +387,7 @@ class Line(GraphicElement):
     Construct line from points.
     This object is a simplification of Graphic method to draw line.
     '''
-    __slots__ = ('points')
+    __slots__ = ('points', )
     def __init__(self, points, **kwargs):
         kwargs.setdefault('type', 'line_loop')
         super(Line, self).__init__(format='vv', **kwargs)
@@ -401,6 +401,142 @@ class Line(GraphicElement):
         lambda self: self._get_points(),
         lambda self, x: self._set_points(x),
         doc='''Add/remove points of the line'''
+    )
+
+class Point(GraphicElement):
+    '''
+    Draw multiple points.
+
+    :Parameters:
+        `texture`: texture, default to None
+            Specify the texture to use for drawing point
+        `radius`: float, default to 1.
+            Size of the point to draw, in pixel.
+        `steps`: int, default to None
+            Number of step between 2 points
+    '''
+    __slots__ = ('_texture', '_radius', '_points', '_stmt', '_need_build',
+                 '_steps')
+    def __init__(self, points, **kwargs):
+        kwargs.setdefault('texture', None)
+        kwargs.setdefault('radius', 1.)
+        kwargs.setdefault('steps', None)
+        kwargs.setdefault('format', 'vv')
+        kwargs.setdefault('type', 'points')
+
+        super(Point, self).__init__(**kwargs)
+
+        self._need_build = True
+        self._texture = kwargs.get('texture')
+        self._radius = kwargs.get('radius')
+        self._steps = kwargs.get('steps')
+        self._points = points
+        self._stmt = None
+        if self._texture:
+            self._stmt = gx_texture(self._texture)
+
+    def build(self):
+        outputList = []
+        points = self._points
+
+        if len(self._points) % 2 == 1:
+            raise Exception('Points list must be a pair length number (not impair)')
+
+        # extract 4 points each 2 points
+        for i in xrange(0, len(points) - 2, 2):
+
+            # extract our 2 points
+            p1x, p1y = (points[i], points[i+1])
+            p2x, p2y = (points[i+2], points[i+3])
+
+            # calculate vector and distance
+            dx,dy = p2x - p1x, p2y - p1y
+            dist = sqrt(dx * dx + dy * dy)
+
+            # determine step
+            steps = self._steps
+            if steps is None:
+                steps = max(1, int(dist)/4)
+
+            # construct pointList
+            pointList = [0, 0] * steps
+            fsteps = float(steps)
+            for i in xrange(steps):
+                pointList[i * 2]   = p1x + dx* (i / fsteps)
+                pointList[i * 2 + 1] = p1y + dy* (i / fsteps)
+
+            # append to the result
+            outputList += pointList
+
+        # set vertex
+        self.data_v = outputList
+
+    def draw(self):
+        if self._need_build:
+            self.build()
+            self._need_build = False
+        stmt = self._stmt
+        if stmt:
+            stmt.bind()
+            glEnable(GL_POINT_SPRITE_ARB)
+            glTexEnvi(GL_POINT_SPRITE_ARB, GL_COORD_REPLACE_ARB, GL_TRUE)
+            glPointSize(self._radius)
+        super(Point, self).draw()
+        if stmt:
+            glDisable(GL_POINT_SPRITE_ARB)
+            stmt.release()
+
+    def _get_step(self):
+        return self._step
+    def _set_step(self, step):
+        if self._step == step:
+            return False
+        self._step = step
+        self._need_build = True
+        return True
+    step = property(
+        lambda self: self._get_step(),
+        lambda self, x: self._set_step(x),
+        doc='Object step')
+
+    def _get_points(self):
+        return self._points
+    def _set_points(self, points):
+        if self._points == points:
+            return False
+        self._points = points
+        self._need_build = True
+        return True
+    points = property(
+        lambda self: self._get_points(),
+        lambda self, x: self._set_points(x),
+        doc='Object points')
+
+    def _get_radius(self):
+        return self._radius
+    def _set_radius(self, radius):
+        if self._radius == radius:
+            return False
+        self._radius = radius
+        self._need_build = True
+        return True
+    radius = property(
+        lambda self: self._get_radius(),
+        lambda self, x: self._set_radius(x),
+        doc='Object radius')
+
+    def _get_texture(self):
+        return self._texture
+    def _set_texture(self, x):
+        if self._texture == x:
+            return
+        self._texture = x
+        if self._texture:
+            self._stmt = gx_texture(self._texture)
+    texture = property(
+        lambda self: self._get_texture(),
+        lambda self, x: self._set_texture(x),
+        doc='Texture to use on the object'
     )
 
 
@@ -662,10 +798,10 @@ class RoundedRectangle(Rectangle):
         if cbr:
             data_v.extend((x + radius, y))
             data_v.extend((x + w - radius, y))
-            t = math.pi * 1.5
-            while t < math.pi * 2:
-                sx = x + w - radius + math.cos(t) * radius
-                sy = y + radius + math.sin(t) * radius
+            t = pi * 1.5
+            while t < pi * 2:
+                sx = x + w - radius + cos(t) * radius
+                sy = y + radius + sin(t) * radius
                 data_v.extend((sx, sy))
                 t += precision
         else:
@@ -675,9 +811,9 @@ class RoundedRectangle(Rectangle):
             data_v.extend((x + w, y + radius))
             data_v.extend((x + w, y + h - radius))
             t = 0
-            while t < math.pi * 0.5:
-                sx = x + w - radius + math.cos(t) * radius
-                sy = y + h -radius + math.sin(t) * radius
+            while t < pi * 0.5:
+                sx = x + w - radius + cos(t) * radius
+                sy = y + h -radius + sin(t) * radius
                 data_v.extend((sx, sy))
                 t += precision
         else:
@@ -686,10 +822,10 @@ class RoundedRectangle(Rectangle):
         if ctl:
             data_v.extend((x + w -radius, y + h))
             data_v.extend((x + radius, y + h))
-            t = math.pi * 0.5
-            while t < math.pi:
-                sx = x  + radius + math.cos(t) * radius
-                sy = y + h - radius + math.sin(t) * radius
+            t = pi * 0.5
+            while t < pi:
+                sx = x  + radius + cos(t) * radius
+                sy = y + h - radius + sin(t) * radius
                 data_v.extend((sx, sy))
                 t += precision
         else:
@@ -698,10 +834,10 @@ class RoundedRectangle(Rectangle):
         if cbl:
             data_v.extend((x, y + h - radius))
             data_v.extend((x, y + radius))
-            t = math.pi
-            while t < math.pi * 1.5:
-                sx = x + radius + math.cos(t) * radius
-                sy = y + radius + math.sin(t) * radius
+            t = pi
+            while t < pi * 1.5:
+                sx = x + radius + cos(t) * radius
+                sy = y + radius + sin(t) * radius
                 data_v.extend((sx, sy))
                 t += precision
         else:
@@ -784,11 +920,11 @@ class Circle(GraphicElement):
     def build(self):
         p = array('f')
         for angle_deg in xrange(361):
-            # rad = deg * (math.pi / 180), where math.pi/180 = 0.0174...
+            # rad = deg * (pi / 180), where pi/180 = 0.0174...
             angle_rad = angle_deg * 0.017453292519943295
             # Polar coordinates to cartesian space
-            x = self.x + self._radius * math.cos(angle_rad)
-            y = self.y + self._radius * math.sin(angle_rad)
+            x = self.x + self._radius * cos(angle_rad)
+            y = self.y + self._radius * sin(angle_rad)
             p.append(x)
             p.append(y)
         self.data_v = p
@@ -1239,6 +1375,11 @@ class Canvas(object):
         '''Create a Line() object, and add to the list.
         Check Line() for more information.'''
         return self.add(Line(*largs, **kwargs))
+
+    def point(self, *largs, **kwargs):
+        '''Create a Point() object, and add to the list.
+        Check Point() for more information.'''
+        return self.add(Point(*largs, **kwargs))
 
     def rectangle(self, *largs, **kwargs):
         '''Create a Rectangle() object, and add to the list.
