@@ -6,6 +6,7 @@ VKeyboard: Virtual keyboard with custom layout support
 import os
 import pymt
 from ....base import getFrameDt
+from ....graphx import Canvas, CSSRectangle
 from ....graphx import set_color, drawCSSRectangle, drawLabel, GlDisplayList, \
                        gx_matrix, drawRoundedRectangle, getLastLabel
 from ....clock import getClock
@@ -258,6 +259,7 @@ class MTVKeyboard(MTScatterWidget):
         self._internal_text     = u''
         self._show_layout       = False
         self._active_keys       = []
+        self._active_keys_c     = {}
         self._old_scale         = self.scale
         self._used_label        = []
         self._last_key_down     = []
@@ -351,7 +353,7 @@ class MTVKeyboard(MTScatterWidget):
             if not layoutmode in self._cache:
                 self._cache[layoutmode] = {'background': GlDisplayList(),
                                            'keys': GlDisplayList(),
-                                           'usedlabel': []}
+                                           'canvas': Canvas()}
             self._current_cache = self._cache[layoutmode]
 
             # do real update
@@ -387,46 +389,49 @@ class MTVKeyboard(MTScatterWidget):
         x, y = 0, self.texsize.y - self.keysize.y
 
         # update display list
-        self._current_cache['usedlabel'] = []
+        canvas = self._current_cache['canvas']
+        canvas.clear()
+
+        # draw lines
+        for index in xrange(1, ky + 1):
+            line = self.layout.__getattribute__('%s_%d' % (self.mode, index))
+
+            # draw keys
+            for key in line:
+                displayed_str, internal_str, internal_action, scale = key
+                kw = self.keysize.x * scale
+
+                # don't display empty keys
+                if displayed_str is not None:
+                    canvas.color(*self.style['key-color'])
+                    if mode == 'background':
+                        if internal_action is not None:
+                            canvas.color(*self.style['syskey-color'])
+                        canvas.cssRectangle(
+                            pos=(x+m, y+m),
+                            size=(kw-m*2, self.keysize.y-m*2),
+                            style=self.style, prefix='key')
+                    elif mode == 'keys':
+                        font_size = int(14 * s)
+                        if font_size < 8:
+                            font_size = 8
+                        color = self.style['color']
+                        if internal_action is not None:
+                            color = self.style['color-syskey']
+                        canvas.text(label=displayed_str,
+                                pos=(x + kw / 2., y + self.keysize.y / 2.),
+                                font_size=font_size, bold=False,
+                                font_name=self.style.get('font-name'),
+                                color=color)
+                # advance X
+                x += kw
+            # advance Y
+            y -= self.keysize.y
+            x = 0
+
+        # XXX temporary, normally, the canvas should optimize itself
         with self._current_cache[mode]:
-
-            # draw lines
-            for index in xrange(1, ky + 1):
-                line = self.layout.__getattribute__('%s_%d' % (self.mode, index))
-
-                # draw keys
-                for key in line:
-                    displayed_str, internal_str, internal_action, scale = key
-                    kw = self.keysize.x * scale
-
-                    # don't display empty keys
-                    if displayed_str is not None:
-                        set_color(*self.style['key-color'])
-                        if mode == 'background':
-                            if internal_action is not None:
-                                set_color(*self.style['syskey-color'])
-                            drawCSSRectangle(
-                                pos=(x+m, y+m),
-                                size=(kw-m*2, self.keysize.y-m*2),
-                                style=self.style, prefix='key')
-                        elif mode == 'keys':
-                            font_size = int(14 * s)
-                            if font_size < 8:
-                                font_size = 8
-                            color = self.style['color']
-                            if internal_action is not None:
-                                color = self.style['color-syskey']
-                            drawLabel(label=displayed_str,
-                                    pos=(x + kw / 2., y + self.keysize.y / 2.),
-                                    font_size=font_size, bold=False,
-                                    font_name=self.style.get('font-name'),
-                                    color=color)
-                            self._current_cache['usedlabel'].append(getLastLabel())
-                    # advance X
-                    x += kw
-                # advance Y
-                y -= self.keysize.y
-                x = 0
+            canvas.draw()
 
         # update completed
         self._need_update = None
@@ -482,10 +487,14 @@ class MTVKeyboard(MTScatterWidget):
             # +2 and -4 result of hard margin coded in _do_update (m = 3 * s)
             # we substract 1 cause of border (draw-border is activated.)
             set_color(*self.style['color-down'])
-            for key, size in self._active_keys:
-                x, y, w, h = size
-                drawCSSRectangle(pos=(x+2, y+2), size=(w-4, h-4),
-                    style=self.style, prefix='key', state='down')
+            for keyinfo in self._active_keys:
+                if not keyinfo in self._active_keys_c:
+                    key, size = keyinfo
+                    x, y, w, h = size
+                    self._active_keys_c[keyinfo] = CSSRectangle(
+                        pos=(x+2, y+2), size=(w-4, h-4),
+                        prefix='key', state='down')
+                self._active_keys_c[keyinfo].draw()
 
             # search the good scale for current precalculated keys layer
             if self._last_update_scale == self.scale:
