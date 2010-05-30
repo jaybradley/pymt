@@ -46,7 +46,12 @@ __all__ = [
 ]
 
 import pymt
-from OpenGL.GL import *
+try:
+    from opengl import *
+    print 'USING OPENGL ACCELERATED'
+except:
+    from OpenGL.GL import *
+    print 'USING DEFAULT OPENGL'
 
 gl_displaylist_generate = False
 class GlDisplayList:

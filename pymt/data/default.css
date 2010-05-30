@@ -148,7 +148,7 @@ kineticlist {
 innerwindowcontainer,
 basewindow,
 window {
-    bg-color: rgb(250,250,250);
+    bg-color: rgb(0,0,0);
     draw-alpha-background: 0;
     alpha-background: 0.8 0.8 0.0 0.0;
     draw-background: 1;

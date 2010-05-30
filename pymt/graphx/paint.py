@@ -18,6 +18,11 @@ import pymt
 from OpenGL.GL import *
 from statement import *
 
+try:
+    from pymt.ext.opengl import *
+except:
+    pass
+
 _brushs_cache   = {}
 _brush_filename = ''
 _brush_texture  = None

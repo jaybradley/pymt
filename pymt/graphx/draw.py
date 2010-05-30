@@ -24,11 +24,16 @@ from statement import *
 from colors import *
 
 try:
-    import _graphx
+    from pymt.ext.opengl import *
+except:
+    pass
+
+try:
+    import pymt.ext.graphx as c_graphx
     pymt.pymt_logger.info('Graphx: Using accelerate graphx module')
 except ImportError, e:
-    _graphx = None
-    pymt.pymt_logger.warning('Extensions: _graphx not available: <%s>' % e)
+    c_graphx = None
+    pymt.pymt_logger.warning('Extensions: accelerate graphx not available: <%s>' % e)
 
 # create a cache for label
 _temp_label = None
@@ -145,8 +150,8 @@ def drawRoundedRectangle(pos=(0,0), size=(100,50), radius=5, color=None,
 
     # use accelerate version
     '''
-    if _graphx:
-        _graphx.drawRoundedRectangle()
+    if c_graphx:
+        c_graphx.drawRoundedRectangle()
         return
     '''
 
@@ -255,8 +260,8 @@ def drawPolygon(points, style=GL_POLYGON, linewidth=0):
     points = _make_point_list(points)
 
     # use accelerate version
-    if _graphx:
-        _graphx.drawPolygon(style, points, linewidth)
+    if c_graphx:
+        c_graphx.drawPolygon(style, points, linewidth)
         return
 
     if linewidth > 0:
@@ -301,8 +306,8 @@ def drawRectangle(pos=(0,0), size=(1.0,1.0), style=GL_QUADS):
             Style of rectangle (try GL_LINE_LOOP)
     '''
     # use accelerated version
-    if _graphx:
-        _graphx.drawRectangle(style, pos[0], pos[1], size[0], size[1])
+    if c_graphx:
+        c_graphx.drawRectangle(style, pos[0], pos[1], size[0], size[1])
         return
 
     with gx_begin(style):
@@ -344,12 +349,11 @@ def drawTexturedRectangle(texture, pos=(0,0), size=(1.0,1.0),
     if tex_coords is None:
         tex_coords = tex_coords_def
 
-    coords = ( pos[0], pos[1],
-            pos[0] + size[0], pos[1],
-            pos[0] + size[0], pos[1] + size[1],
-            pos[0], pos[1] + size[1])
-
     if color_coords:
+        coords = ( pos[0], pos[1],
+                pos[0] + size[0], pos[1],
+                pos[0] + size[0], pos[1] + size[1],
+                pos[0], pos[1] + size[1])
         with gx_begin(GL_QUADS):
             glColor4f(*color_coords[0])
             glTexCoord2f(tex_coords[0], tex_coords[1])
@@ -364,11 +368,15 @@ def drawTexturedRectangle(texture, pos=(0,0), size=(1.0,1.0),
             glTexCoord2f(tex_coords[6], tex_coords[7])
             glVertex2f(coords[6], coords[7])
     else:
-        if _graphx:
+        if c_graphx:
             x, y = pos
             w, h = size
-            _graphx.drawTexturedRectangle(x, y, w, h, *tex_coords)
+            c_graphx.drawTexturedRectangle(x, y, w, h, *tex_coords)
         else:
+            coords = ( pos[0], pos[1],
+                    pos[0] + size[0], pos[1],
+                    pos[0] + size[0], pos[1] + size[1],
+                    pos[0], pos[1] + size[1])
             with gx_begin(GL_QUADS):
                 glTexCoord2f(tex_coords[0], tex_coords[1])
                 glVertex2f(coords[0], coords[1])
@@ -383,47 +391,50 @@ def drawTexturedRectangle(texture, pos=(0,0), size=(1.0,1.0),
     if texture:
         stmt.release()
 
-def drawLine(points, width=None, colors=[]):
-    '''Draw a line
+if c_graphx:
+    drawLine = c_graphx.drawLine
+else:
+    def drawLine(points, width=None, colors=[]):
+        '''Draw a line
 
-    :Parameters:
-        `points` : list
-            List of corresponding coordinates representing the points that the
-            line comprises, like [x1, y1, x2, y2]. Hence, len(points) must be
-            a power of 2.
-        `width` : float, defaults to 5.0
-            Default width of line
-        `colors` : list of tuples, defaults to []
-            If you want to draw colors between the points of the line, this
-            list has to be populated with a tuple for each point representing
-            that point's color. Hence, len(colors) == len(points) / 2 holds.
-            Turned off by default.
-    '''
-    style = GL_LINES
-    points = _make_point_list(points)
-    l = len(points)
-    if l < 4:
-        return
-    elif l > 4:
-        style = GL_LINE_STRIP
+        :Parameters:
+            `points` : list
+                List of corresponding coordinates representing the points that the
+                line comprises, like [x1, y1, x2, y2]. Hence, len(points) must be
+                a power of 2.
+            `width` : float, defaults to 5.0
+                Default width of line
+            `colors` : list of tuples, defaults to []
+                If you want to draw colors between the points of the line, this
+                list has to be populated with a tuple for each point representing
+                that point's color. Hence, len(colors) == len(points) / 2 holds.
+                Turned off by default.
+        '''
+        style = GL_LINES
+        points = _make_point_list(points)
+        l = len(points)
+        if l < 4:
+            return
+        elif l > 4:
+            style = GL_LINE_STRIP
 
-    if width is not None:
-        glPushAttrib(GL_LINE_BIT)
-        glLineWidth(width)
+        if width is not None:
+            glPushAttrib(GL_LINE_BIT)
+            glLineWidth(width)
 
-    with DO(gx_attrib(GL_COLOR_BUFFER_BIT), gx_begin(style)):
-        if colors:
-            colors = colors[:]
-            for x, y, r, g, b in zip(points[::2], points[1::2],
-                                     colors[::3], colors[1::3], colors[2::3]):
-                glColor3f(r, g, b)
-                glVertex2f(x, y)
-        else:
-            for x, y in zip(points[::2], points[1::2]):
-                glVertex2f(x, y)
+        with DO(gx_attrib(GL_COLOR_BUFFER_BIT), gx_begin(style)):
+            if colors:
+                colors = colors[:]
+                for x, y, r, g, b in zip(points[::2], points[1::2],
+                                         colors[::3], colors[1::3], colors[2::3]):
+                    glColor3f(r, g, b)
+                    glVertex2f(x, y)
+            else:
+                for x, y in zip(points[::2], points[1::2]):
+                    glVertex2f(x, y)
 
-    if width is not None:
-        glPopAttrib()
+        if width is not None:
+            glPopAttrib()
 
 def drawRoundedRectangleAlpha(pos=(0,0), size=(100,50), radius=5, alpha=(1,1,1,1),
                          precision=0.5, style=GL_TRIANGLE_FAN):
@@ -522,11 +533,11 @@ def drawRectangleAlpha(pos=(0,0), size=(1.0,1.0), alpha=(1,1,1,1), style=GL_QUAD
             Style of rectangle (try GL_LINE_LOOP)
     '''
     # use accelerated version
-    if _graphx:
+    if c_graphx:
         x, y = pos
         w, h = size
         a0, a1, a2, a3 = alpha
-        _graphx.drawRectangleAlpha(style, x, y, w, h, a0, a1, a2, a3)
+        c_graphx.drawRectangleAlpha(style, x, y, w, h, a0, a1, a2, a3)
         return
 
     with DO(gx_alphablending, gx_begin(style)):

@@ -4,6 +4,11 @@ Colors: manipulate colors
 
 from OpenGL.GL import *
 
+try:
+    from pymt.ext.opengl import *
+except:
+    pass
+
 __all__ = ['set_color']
 
 def set_color(*colors, **kwargs):

@@ -12,6 +12,11 @@ from statement import GlDisplayList, gx_color
 from OpenGL.GL import *
 from pymt.core.svg import Svg
 
+try:
+    from pymt.ext.opengl import *
+except:
+    pass
+
 
 if not 'PYMT_DOC' in os.environ:
     Cache.register('pymt.cssrect', limit=100, timeout=60)
