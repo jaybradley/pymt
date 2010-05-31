@@ -35,15 +35,15 @@ if have_cython:
     if sys.platform == 'win32':
         libraries = ['opengl32']
     else:
-        libraries = ['gl']
+        libraries = ['GL']
     ext_modules.append(Extension('pymt.ext.accelerate',
         ['pymt/ext/accelerate.pyx']))
     ext_modules.append(Extension('pymt.ext.opengl',
         ['pymt/ext/opengl.pyx'],
-        libraries=['opengl32']))
+        libraries=libraries))
     ext_modules.append(Extension('pymt.ext.graphx',
         ['pymt/ext/graphx.pyx'],
-        libraries=['opengl32']))
+        libraries=libraries))
 
 # setup !
 setup(
