@@ -62,7 +62,7 @@ class Touch(object):
         ('id','sx','sy','sz','a','b','c',
          'X','Y','Z','A','B','C','m','r',
          'profile','x','y','z','dxpos',
-         'dypos','dzpos',)
+         'dypos','dzpos','is_held',)
 
 
     def __init__(self, device, id, args):
@@ -126,6 +126,7 @@ class Touch(object):
         self.double_tap_time = 0
         self.no_event = False
         self.userdata = {}
+        self.is_held = False
 
         self.depack(args)
 

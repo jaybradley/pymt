@@ -84,25 +84,25 @@ class MTInnerWindow(MTScatterWidget):
         self.container = MTInnerWindowContainer(pos=(0,0), size=self.size)
         super(MTInnerWindow, self).add_widget(self.container)
         self.control_scale = kwargs.get('control_scale')
-        self.setup_controls()
+        #self.setup_controls()
 
-    def setup_controls(self):
-        self.controls = MTWidget()
-        self.controls.parent = self
-
-        self.btn_fullscreen = MTImageButton(filename=iconPath+'fullscreen.png',
-                                            scale=self.control_scale,
-                                            cls='innerwindow-fullscreen')
-        self.btn_fullscreen.push_handlers(on_release=self.fullscreen)
-        self.controls.add_widget(self.btn_fullscreen)
-
-        self.btn_close = MTImageButton(filename=iconPath+'stop.png',
-                                       scale=self.control_scale,
-                                       cls='innerwindow-close')
-        self.btn_close.push_handlers(on_release=self.close)
-        self.controls.add_widget(self.btn_close)
-
-        self.update_controls()
+#    def setup_controls(self):
+#        self.controls = MTWidget()
+#        self.controls.parent = self
+#
+#        self.btn_fullscreen = MTImageButton(filename=iconPath+'fullscreen.png',
+#                                            scale=self.control_scale,
+#                                            cls='innerwindow-fullscreen')
+#        self.btn_fullscreen.push_handlers(on_release=self.fullscreen)
+#        self.controls.add_widget(self.btn_fullscreen)
+#
+#        self.btn_close = MTImageButton(filename=iconPath+'stop.png',
+#                                       scale=self.control_scale,
+#                                       cls='innerwindow-close')
+#        self.btn_close.push_handlers(on_release=self.close)
+#        self.controls.add_widget(self.btn_close)
+#
+#        self.update_controls()
 
     def fullscreen(self, *largs, **kwargs):
         root_win = self.parent.get_parent_window()
@@ -149,26 +149,26 @@ class MTInnerWindow(MTScatterWidget):
     def get_scaled_border(self):
         return self.style.get('border-width') * (1.0 / self.scale)
 
-    def update_controls(self):
-        scaled_border = self.get_scaled_border()
-        center_x = self.width / 2
-        center_y = - scaled_border
-        for button in self.controls.children:
-            button.scale = self.control_scale / self.scale
-        self.btn_fullscreen.pos = \
-                center_x - (self.btn_fullscreen.width) - 2, \
-                center_y - (self.btn_fullscreen.height / 2)
-        self.btn_close.pos = \
-                center_x + 2, \
-                center_y - (self.btn_close.height / 2)
+#    def update_controls(self):
+#        scaled_border = self.get_scaled_border()
+#        center_x = self.width / 2
+#        center_y = - scaled_border
+#        for button in self.controls.children:
+#            button.scale = self.control_scale / self.scale
+#        self.btn_fullscreen.pos = \
+#                center_x - (self.btn_fullscreen.width) - 2, \
+#                center_y - (self.btn_fullscreen.height / 2)
+#        self.btn_close.pos = \
+#                center_x + 2, \
+#                center_y - (self.btn_close.height / 2)
 
     def on_touch_down(self, touch):
         touch.push()
         touch.x, touch.y = super(MTInnerWindow, self).to_local(touch.x, touch.y)
-        if self.controls.dispatch_event('on_touch_down', touch):
-            touch.pop()
-            touch.grab(self)
-            return True
+#       if self.controls.dispatch_event('on_touch_down', touch):
+#            touch.pop()
+#            touch.grab(self)
+#            return True
         touch.pop()
 
         if super(MTInnerWindow, self).on_touch_down(touch):
@@ -178,9 +178,9 @@ class MTInnerWindow(MTScatterWidget):
         if touch.grab_current == self:
             touch.push()
             touch.x, touch.y = super(MTInnerWindow, self).to_local(touch.x, touch.y)
-            if self.controls.dispatch_event('on_touch_move', touch):
-                touch.pop()
-                return True
+#            if self.controls.dispatch_event('on_touch_move', touch):
+#                touch.pop()
+#                return True
             touch.pop()
         return super(MTInnerWindow, self).on_touch_move(touch)
 
@@ -188,9 +188,9 @@ class MTInnerWindow(MTScatterWidget):
         if touch.grab_current == self:
             touch.push()
             touch.x, touch.y = super(MTInnerWindow, self).to_local(touch.x, touch.y)
-            if self.controls.dispatch_event('on_touch_up', touch):
-                touch.pop()
-                return True
+#            if self.controls.dispatch_event('on_touch_up', touch):
+#                touch.pop()
+#                return True
             touch.pop()
         return super(MTInnerWindow, self).on_touch_up(touch)
 
@@ -216,28 +216,38 @@ class MTInnerWindow(MTScatterWidget):
 
         # draw border
         scaled_border = self.get_scaled_border()
-        self.update_controls()
+#        self.update_controls()
         drawRoundedRectangle(
             pos=(-scaled_border, -scaled_border),
             size=(self.width+scaled_border*2, self.height+scaled_border*2),
             radius=15. / self.scale
         )
 
-        # draw control background
-        control_width = self.btn_fullscreen.width + self.btn_close.width
-        drawRoundedRectangle(
-            pos=((self.width/2)-(scaled_border + control_width / 2), -scaled_border * 2),
-            size=(scaled_border*2 + control_width, scaled_border),
-            radius=15. / self.scale,
-            corners=(True, True, False, False)
-        )
+        # gradient
+        set_color(1, 1, 1, 0.005)
+        for step in range(5, 11):
+          scaled_border -= (scaled_border * (step / 10.0))
+          drawRoundedRectangle(
+              pos=(-scaled_border, -scaled_border),
+              size=(self.width+scaled_border*2, self.height+scaled_border*2),
+              radius=15. / self.scale
+          )
+
+#        # draw control background
+#        control_width = self.btn_fullscreen.width + self.btn_close.width
+#        drawRoundedRectangle(
+#            pos=((self.width/2)-(scaled_border + control_width / 2), -scaled_border * 2),
+#            size=(scaled_border*2 + control_width, scaled_border),
+#            radius=15. / self.scale,
+#            corners=(True, True, False, False)
+#        )
 
     def on_draw(self):
         with gx_matrix:
             glMultMatrixf(self.transform_mat)
 
             self.draw()
-            self.controls.dispatch_event('on_draw')
+#            self.controls.dispatch_event('on_draw')
 
             # use stencil for container
             with gx_stencil:

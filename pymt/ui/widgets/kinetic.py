@@ -96,6 +96,7 @@ class MTKinetic(MTWidget):
         if touch.uid not in self.touch:
             return
         ktouch = self.touch[touch.uid]
+        ktouch.is_held = touch.is_held # hack to allow touch and hold
         if isinstance(ktouch, KineticTouchXY):
             ktouch.move([touch.x, touch.y, touch.X, touch.Y])
         else:

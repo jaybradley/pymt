@@ -56,10 +56,14 @@ class MTTextInput(MTButton):
         kwargs.setdefault('switch', True)
         kwargs.setdefault('keyboard_type',
             pymt_config.get('widgets', 'keyboard_type'))
+        kwargs.setdefault('place_keyboard_by_control', False)
+        kwargs.setdefault('get_initial_keyboard_rotation_from', None)
         super(MTTextInput, self).__init__(**kwargs)
         self._keyboard = kwargs.get('keyboard')
         self.is_active_input = False
         self.password = kwargs.get('password')
+        self.place_keyboard_by_control = kwargs.get('place_keyboard_by_control')
+        self.get_initial_keyboard_rotation_from = kwargs.get('get_initial_keyboard_rotation_from')
 
         # initialize group on random if nothing is set
         self._groupname = kwargs.get('group')
@@ -197,6 +201,14 @@ class MTTextInput(MTButton):
             to_root = self.keyboard_to_root
             w = self.get_root_window() if to_root else self.get_parent_window()
             w.add_widget(self.keyboard)
+            if(self.place_keyboard_by_control == True): # should we place the keyboard near to the text input control
+                #self.keyboard.pos = self.to_window(self.pos[0] + (self.width / 2), self.pos[1] - (self.height / 2) - (self.keyboard.height / 2)) # position of the text input field
+                print "self.pos", self.pos, "to_window", self.to_window(self.pos[0], self.pos[1])
+                position_to_add = (self.to_window(self.pos[0], self.pos[1])[0] - (self.keyboard.width / 2) + (self.width / 2), self.to_window(self.pos[0], self.pos[1])[1] - (self.keyboard.height / 2) - (self.height * 2))
+                #position_to_add = (self.get_root_window().center[0] - (self.keyboard.width / 2), self.get_root_window().center[1] - (self.keyboard.height / 2))
+                self.keyboard.pos = position_to_add # position of the text input field
+            if(self.get_initial_keyboard_rotation_from != None):
+                self.keyboard.rotation = self.get_initial_keyboard_rotation_from.rotation
         if self.keyboard is not None:
             self._keyboard.push_handlers(
                 on_text_change=self._kbd_on_text_change,
