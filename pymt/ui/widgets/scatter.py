@@ -249,10 +249,14 @@ class MTScatter(MTWidget):
         return (p[0],p[1])
 
     def to_local(self, x, y, **k):
-        p = matrix_multiply(self._transform_inv, (x,y,0,1))
-        return (p[0],p[1])
-
-    
+        #print "JAY MTScatter::to_local","x",x,"y",y
+        if(x == None or y == None):
+            print "Fudge it"
+            return (x, y)
+        else:
+            p = matrix_multiply(self._transform_inv, (x,y,0,1))
+            return (p[0],p[1])
+        
     def apply_angle_scale_trans(self, angle, scale, trans, point=Vector(0,0)):
         '''Update matrix transformation by adding new angle, scale and translate.
 
@@ -355,8 +359,13 @@ class MTScatter(MTWidget):
             return False
         
         # let the child widgets handle the event if they want
+        
+        print "touch is a", touch.__class__.__name__
+        
+        
         touch.push(attrs=['x','y','dxpos','dypos'])
         touch.x, touch.y = self.to_local(x, y)
+        print "MTScatter::on_touch_down","touch.dxpos",touch.dxpos,"touch.dypos",touch.dypos
         touch.dxpos, touch.dypos = self.to_local(touch.dxpos, touch.dypos)
         if super(MTScatter, self).on_touch_down(touch):
             touch.pop()
