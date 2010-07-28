@@ -99,20 +99,20 @@ class MTKinetic(MTWidget):
         ktouch = self.touch[touch.uid]
         ktouch.is_held = touch.is_held # hack to allow touch and hold
         
-        
-        # start of testing
-        print "MTKinetic::on_touch_move", "touch.dxpos", touch.dxpos, "touch.dypos", touch.dypos
-        
-        ktouch.dxpos = touch.dxpos
-        ktouch.dypos = touch.dypos
-        
-        # end of testing
-        
         if isinstance(ktouch, KineticTouchXY):
             ktouch.move([touch.x, touch.y, touch.X, touch.Y])
         else:
             ktouch.move([touch.x, touch.y])
         ktouch.userdata = touch.userdata
+
+        # start of testing
+        #print "MTKinetic::on_touch_move", "touch.dxpos", touch.dxpos, "touch.dypos", touch.dypos
+        
+        #ktouch.dxpos = touch.dxpos
+        #ktouch.dypos = touch.dypos
+        
+        # end of testing
+
         ret = super(MTKinetic, self).on_touch_move(ktouch)
 
         # dispatch ktouch also in grab mode
