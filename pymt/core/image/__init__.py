@@ -4,7 +4,7 @@ Image: handle loading of images
 
 __all__ = ('Image', 'ImageLoader', 'ImageData')
 
-from .. import core_register_libs
+from pymt.core import core_register_libs
 from pymt.baseobject import BaseObject
 from pymt.utils import deprecated
 from pymt.graphx import DO, gx_color, gx_blending, drawTexturedRectangle, set_color
@@ -13,7 +13,7 @@ from pymt.texture import Texture, TextureRegion
 class ImageData(object):
     '''Container for data image : width, height, mode and data.
 
-    ..warning ::
+    .. warning::
         Only RGB and RGBA mode are allowed.
     '''
 
@@ -87,8 +87,8 @@ class ImageLoader(object):
     loaders = []
 
     @staticmethod
-    def register(cls):
-        ImageLoader.loaders.append(cls)
+    def register(defcls):
+        ImageLoader.loaders.append(defcls)
 
     @staticmethod
     def load(filename, **kwargs):
@@ -174,7 +174,7 @@ class Image(BaseObject):
         if 'opacity' in kwargs:
             self.opacity    = kwargs.get('opacity')
         if 'scale' in kwargs:
-           self.scale       = kwargs.get('scale')
+            self.scale      = kwargs.get('scale')
         if 'anchor_x' in kwargs:
             self.anchor_x   = kwargs.get('anchor_x')
         if 'anchor_y' in kwargs:
@@ -248,7 +248,7 @@ class Image(BaseObject):
     def read_pixel(self, x, y):
         '''For a given local x/y position, return the color at that position.
 
-        ..warning ::
+        .. warning::
             This function can be used only with images loaded with
             keep_data=True keyword. For examples ::
 

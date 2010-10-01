@@ -6,13 +6,12 @@ __all__ = ('MTWindowPygame', )
 
 import os
 import pymt
-from . import BaseWindow
-from ...exceptions import pymt_exception_manager, ExceptionManager
-from ...logger import pymt_logger
-from ...utils import curry
-from ...base import stopTouchApp, getEventLoop
+from pymt.ui.window import BaseWindow
+from pymt.exceptions import pymt_exception_manager, ExceptionManager
+from pymt.logger import pymt_logger
+from pymt.base import stopTouchApp, getEventLoop
 from OpenGL.GL import glEnable
-from OpenGL.GL.ARB.multisample import *
+from OpenGL.GL.ARB.multisample import GL_MULTISAMPLE_ARB
 
 try:
     import pygame
@@ -52,6 +51,10 @@ class MTWindowPygame(BaseWindow):
             pymt_logger.debug('WinPygame: Set window to fullscreen mode')
             self.flags |= pygame.FULLSCREEN
 
+        #set window icon before calling set_mode
+        icon = pygame.image.load(pymt.pymt_config.get('graphics', 'window_icon'))
+        pygame.display.set_icon(icon)
+
 
         # init ourself size + setmode
         # before calling on_resize
@@ -77,7 +80,7 @@ class MTWindowPygame(BaseWindow):
         if multisamples:
             try:
                 glEnable(GL_MULTISAMPLE_ARB)
-            except:
+            except Exception:
                 pass
 
         super(MTWindowPygame, self).create_window(params)

@@ -2,12 +2,15 @@
 Shader: abstract compilation and usage
 '''
 
-__all__ = ['ShaderException', 'Shader']
+__all__ = ('ShaderException', 'Shader')
 
-import pymt
-from ctypes import *
-from OpenGL.GL import *
-from OpenGL.GLU import *
+from pymt.logger import pymt_logger
+#from ctypes import *
+from OpenGL.GL import GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, \
+        glCreateProgram, glGetUniformLocation, glUniform1i, \
+        glUniform1f, glLinkProgram, glCreateShader, glUseProgram, \
+        glAttachShader, glCompileShader, glShaderSource, \
+        glGetProgramInfoLog, glGetShaderInfoLog
 
 
 class ShaderException(Exception):
@@ -27,17 +30,19 @@ class Shader(object):
         self.program = glCreateProgram()
 
         if vertex_source:
-            self.vertex_shader = self.create_shader(vertex_source, GL_VERTEX_SHADER)
+            self.vertex_shader = self.create_shader(
+                vertex_source, GL_VERTEX_SHADER)
             glAttachShader(self.program, self.vertex_shader)
 
         if fragment_source:
-            self.fragment_shader = self.create_shader(fragment_source, GL_FRAGMENT_SHADER)
+            self.fragment_shader = self.create_shader(
+                fragment_source, GL_FRAGMENT_SHADER)
             glAttachShader(self.program, self.fragment_shader)
 
         glLinkProgram(self.program)
         message = self.get_program_log(self.program)
         if message:
-            pymt.pymt_logger.debug('Shader: shader program message: %s' % message)
+            pymt_logger.debug('Shader: shader program message: %s' % message)
 
     def create_shader(self, source, shadertype):
         shader = glCreateShader(shadertype)
@@ -49,7 +54,7 @@ class Shader(object):
         glCompileShader(shader)
         message = self.get_shader_log(shader)
         if message:
-            pymt.pymt_logger.debug('Shader: shader message: %s' % message)
+            pymt_logger.debug('Shader: shader message: %s' % message)
         return shader
 
     def set_uniform_f(self, name, value):
@@ -67,7 +72,7 @@ class Shader(object):
         elif isinstance(value, int):
             self.set_uniform_i(name, value)
         else:
-            raise TypeError("Only single floats and ints are supported so far")
+            raise TypeError('Only single floats and ints are supported so far')
 
     def use(self):
         '''Use the shader'''

@@ -16,6 +16,7 @@ To configure HIDInput, put in your configuration ::
 You have the possibility to use custom range for some X, Y and pressure value.
 On some drivers, the range reported is invalid.
 To fix that, you can add one of theses options on the argument line :
+
 * min_position_x : X minimum
 * max_position_x : X maximum
 * min_position_y : Y minimum
@@ -35,8 +36,8 @@ configuration ::
 __all__ = ('HIDInputTouchProvider', 'HIDTouch')
 
 import os
-from ..touch import Touch
-from ..shape import TouchShapeRect
+from pymt.input.touch import Touch
+from pymt.input.shape import TouchShapeRect
 
 class HIDTouch(Touch):
     def depack(self, args):
@@ -64,11 +65,10 @@ else:
     import threading
     import collections
     import struct
-    import sys
     import fcntl
-    from ..provider import TouchProvider
-    from ..factory import TouchFactory
-    from ...logger import pymt_logger
+    from pymt.input.provider import TouchProvider
+    from pymt.input.factory import TouchFactory
+    from pymt.logger import pymt_logger
 
     #
     # This part is taken from linux-source-2.6.32/include/linux/input.h
@@ -152,6 +152,8 @@ else:
 
             # read parameters
             for arg in args[1:]:
+                if arg == '':
+                    continue
                 arg = arg.split('=')
 
                 # ensure it's a key = value

@@ -3,14 +3,13 @@ Flippable Widget: A widget with 2 sides who can flip between the sides.
 '''
 
 
-__all__ = ['MTFlippableWidget']
+__all__ = ('MTFlippableWidget', )
 
-from OpenGL.GL import *
-from ..factory import MTWidgetFactory
-from ...graphx import gx_matrix, drawCSSRectangle, set_color
-from widget import MTWidget
-from ..animation import Animation, AnimationAlpha
-from ...utils import SafeList
+from OpenGL.GL import glTranslatef, glRotatef
+from pymt.graphx import gx_matrix, drawCSSRectangle, set_color
+from pymt.ui.widgets.widget import MTWidget
+from pymt.ui.animation import Animation
+from pymt.utils import SafeList
 
 class MTFlippableWidget(MTWidget):
     '''This is wrapper widget using which you can make a
@@ -80,14 +79,14 @@ class MTFlippableWidget(MTWidget):
 
         try:
             w.parent = self
-        except:
+        except Exception:
             pass
 
     def draw(self):
         set_color(*self.style.get('bg-color'))
-        drawCSSRectangle(pos=(0,0), size=self.size, style=self.style)
+        drawCSSRectangle(pos=(0, 0), size=self.size, style=self.style)
 
-    def flip_children(self):
+    def _flip_children(self):
         # This has to be called exactly half way through the animation
         # so it looks like there are actually two sides'''
         if self.side == 'front':
@@ -101,28 +100,35 @@ class MTFlippableWidget(MTWidget):
             for x in self.children_front[:]:
                 super(MTFlippableWidget, self).add_widget(x)
 
+    def _set_side(self, to):
+        assert(to in ('back', 'front'))
+        if to == 'back' and self.side == 'front':
+            self._flip_children()
+        elif to == 'front' and self.side == 'back':
+            self._flip_children()
+
     def flip_to(self, to):
         '''Flip to the requested side ('front' or 'back')'''
         assert(to in ('back', 'front'))
         if to == 'back' and self.side == 'front':
-            self.flip_children()
+            self.flip()
         elif to == 'front' and self.side == 'back':
-            self.flip_children()
+            self.flip()
 
     def flip(self):
-       '''Triggers a flipping animation'''
-       if self._anim_current:
-           self._anim_current.stop()
-       if self.side == 'front':
-           self._anim_current = self.do(self._anim_back)
-       else:
-           self._anim_current = self.do(self._anim_front)
+        '''Triggers a flipping animation'''
+        if self._anim_current:
+            self._anim_current.stop()
+        if self.side == 'front':
+            self._anim_current = self.do(self._anim_back)
+        else:
+            self._anim_current = self.do(self._anim_front)
 
     def on_update(self):
         if self.zangle < self.flipangle:
-            self.flip_to('front')
+            self._set_side('front')
         else:
-            self.flip_to('back')
+            self._set_side('back')
         return super(MTFlippableWidget, self).on_update()
 
     def on_draw(self):
@@ -135,6 +141,3 @@ class MTFlippableWidget(MTWidget):
                 glRotatef(self.zangle + 180, 0, 1, 0)
             glTranslatef(-self.width / 2, 0, 0)
             super(MTFlippableWidget, self).on_draw()
-
- # Register all base widgets
-MTWidgetFactory.register('MTFlippableWidget', MTFlippableWidget)

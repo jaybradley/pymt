@@ -2,36 +2,39 @@
 Widget: Base of every widget implementation.
 '''
 
-__all__ = (
-    'getWidgetById',
-    'MTWidget'
-)
+__all__ = ('getWidgetById', 'MTWidget')
 
-import sys
-import os
 import weakref
-from ...event import EventDispatcher
-from ...logger import pymt_logger
-from ...base import getCurrentTouches
-from ...input import Touch
-from ...utils import SafeList
-from ..animation import Animation, AnimationAlpha
-from ..factory import MTWidgetFactory
-from ..colors import css_get_style
-from ...graphx import set_color, drawCSSRectangle
+from pymt.event import EventDispatcher
+from pymt.logger import pymt_logger
+from pymt.utils import SafeList
+from pymt.ui.factory import MTWidgetFactory
+from pymt.ui.colors import css_get_style
+from pymt.graphx import set_color, drawCSSRectangle
 
-_id_2_widget = {}
+_id_2_widget = dict()
 
-def getWidgetById(id):
-    global _id_2_widget
-    if id not in _id_2_widget:
+def getWidgetById(widget_id):
+    '''Get a widget by ID'''
+    if widget_id not in _id_2_widget:
         return
-    ref = _id_2_widget[id]
+    ref = _id_2_widget[widget_id]
     obj = ref()
     if not obj:
-        del _id_2_widget[id]
+        del _id_2_widget[widget_id]
         return
     return obj
+
+
+class MTWidgetMetaclass(type):
+    '''Metaclass to auto register new widget into :ref:`MTWidgetFactory`
+    .. warning::
+        This metaclass is used for MTWidget. Don't use it directly !
+    '''
+    def __init__(mcs, name, bases, attrs):
+        super(MTWidgetMetaclass, mcs).__init__(name, bases, attrs)
+        # auto registration in factory
+        MTWidgetFactory.register(name, mcs)
 
 class MTWidget(EventDispatcher):
     '''Global base for any multitouch widget.
@@ -78,6 +81,8 @@ class MTWidget(EventDispatcher):
             Fired when parent widget is resized
     '''
 
+    __metaclass__ = MTWidgetMetaclass
+
     __slots__ = ('children', 'style', 'draw_children',
                  '_cls',
                  '_root_window_source', '_root_window',
@@ -117,13 +122,22 @@ class MTWidget(EventDispatcher):
         for ev in MTWidget.visible_events:
             self.register_event_type(ev)
 
+        # privates
         self.__animationcache__   = set()
         self._parent              = None
-        self.children             = SafeList()
         self._visible             = None
         self._size_hint           = kwargs.get('size_hint')
-        self.visible              = kwargs.get('visible')
+
+
+        #: List of children (SafeList)
+        self.children             = SafeList()
+        #: If False, childrens are not drawed. (deprecated)
         self.draw_children        = kwargs.get('draw_children')
+        #: Dictionnary that contains the widget style
+        self.style = {}
+
+        # apply visibility
+        self.visible              = kwargs.get('visible')
 
         # cache for get_parent_window()
         self._parent_layout         = None
@@ -133,12 +147,11 @@ class MTWidget(EventDispatcher):
         self._root_window           = None
         self._root_window_source    = None
 
-        self.register_event_type('on_update')
-        self.register_event_type('on_animation_complete')
-        self.register_event_type('on_resize')
-        self.register_event_type('on_parent_resize')
-        self.register_event_type('on_move')
-        self.register_event_type('on_parent')
+        # register events
+        register_event_type = self.register_event_type
+        for event in ('on_update', 'on_animation_complete', 'on_resize',
+                      'on_parent_resize', 'on_move', 'on_parent'):
+            register_event_type(event)
 
         if kwargs.get('x'):
             self._pos = (kwargs.get('x'), self.y)
@@ -149,14 +162,12 @@ class MTWidget(EventDispatcher):
         if kwargs.get('height'):
             self._size = (self.width, kwargs.get('height'))
 
-        # apply css
-        self.style = {}
+        # apply style
         self._cls = ''
-        self._inline_style = kwargs.get('style')
+        self._inline_style = kwargs['style']
+
         # loading is done here automaticly
         self.cls = kwargs.get('cls')
-
-        self.init()
 
     def _set_cls(self, cls):
         self._cls = cls
@@ -164,7 +175,8 @@ class MTWidget(EventDispatcher):
     def _get_cls(self):
         return self._cls
     cls = property(_get_cls, _set_cls,
-        doc='Get/Set the class of the widget (used for CSS)')
+        doc='Get/Set the class of the widget (used for CSS, can be a string '
+            'or a list of string')
 
     def _set_parent(self, parent):
         self._parent = parent
@@ -175,7 +187,6 @@ class MTWidget(EventDispatcher):
                       doc='MTWidget: parent of widget. Fired on_parent event when set')
 
     def _set_id(self, id):
-        global _id_2_widget
         ref = weakref.ref(self)
         if ref in _id_2_widget:
             del _id_2_widget[self._id]
@@ -200,11 +211,11 @@ class MTWidget(EventDispatcher):
         else:
             for ev in MTWidget.visible_events:
                 self.unregister_event_type(ev)
-
     def _get_visible(self):
         return self._visible
-    visible = property(_get_visible, _set_visible,
-                       doc='bool: visibility of widget')
+    visible = property(_get_visible, _set_visible, doc=''
+        'True if the widget is visible. If False, the events on_draw,'
+        'on_touch_down, on_touch_move, on_touch_up are not dispatched.')
 
     def _set_size_hint(self, size_hint):
         if self._size_hint == size_hint:
@@ -273,9 +284,6 @@ class MTWidget(EventDispatcher):
         if x > self.x  and x < self.x + self.width and \
            y > self.y and y < self.y + self.height:
             return True
-
-    def init(self):
-        pass
 
     def get_root_window(self):
         '''Return the root window of widget'''
@@ -355,10 +363,10 @@ class MTWidget(EventDispatcher):
         if front:
             self.children.append(w)
         else:
-            self.children.insert(0,w)
+            self.children.insert(0, w)
         try:
             w.parent = self
-        except:
+        except Exception:
             pass
 
     def add_widgets(self, *widgets):
@@ -467,13 +475,10 @@ class MTWidget(EventDispatcher):
 # install acceleration
 try:
     import types
-    from ...accelerate import accelerate
+    from pymt.accelerate import accelerate
     if accelerate is not None:
         MTWidget.on_update = types.MethodType(accelerate.widget_on_update, None, MTWidget)
         MTWidget.on_draw = types.MethodType(accelerate.widget_on_draw, None, MTWidget)
         MTWidget.collide_point = types.MethodType(accelerate.widget_collide_point, None, MTWidget)
 except ImportError, e:
     pymt_logger.warning('Widget: Unable to use accelerate module <%s>' % e)
-
-# Register all base widgets
-MTWidgetFactory.register('MTWidget', MTWidget)

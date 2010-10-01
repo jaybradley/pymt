@@ -68,13 +68,13 @@ This will execute all the animations on the properties togather.
 "&" operator is used to run them parallel
 '''
 
-__all__ = ['AnimationAlpha', 'Animation', 'Repeat', 'Delay']
+__all__ = ('AnimationAlpha', 'Animation', 'Repeat', 'Delay')
 
 import math
 import types
 from copy import deepcopy, copy
-from ..clock import getClock
-from ..event import EventDispatcher
+from pymt.clock import getClock
+from pymt.event import EventDispatcher
 
 class AnimationBase(object):
     # This is the base animation object class. Everytime a do or animate
@@ -708,7 +708,8 @@ class Delay(Animation):
             Number of seconds you want delay.
 
     '''
-    def init(self,**kwargs):
+    def __init__(self, **kwargs):
+        super(Delay, self).__init__(**kwargs)
         self._duration = kwargs.get('duration')
 
 

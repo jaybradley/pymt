@@ -7,13 +7,10 @@ __all__ = ('MTList', 'MTListContainer')
 from pymt.graphx import gx_matrix
 from pymt.utils import boundary
 from pymt.base import getFrameDt
-from pymt.ui.factory import MTWidgetFactory
 from pymt.ui.widgets.widget import MTWidget
-from pymt.ui.widgets.button import MTButton
 from pymt.ui.widgets.stencilcontainer import MTStencilContainer
 from pymt.config import pymt_config
 from OpenGL.GL import glTranslatef
-from math import sqrt, pow
 
 #
 # Split between List and ListContainer is done
@@ -24,7 +21,7 @@ from math import sqrt, pow
 class MTListContainer(MTWidget):
     '''Container for MTList.
 
-    ..warning ::
+    .. warning::
         The size of this container is taken from the first children size.
 
     '''
@@ -48,7 +45,7 @@ class MTList(MTStencilContainer):
     '''List with kinetic. This is the replacement of old MTKineticList().
     The MTList widget are able to scroll in 2 way, and use your widgets.
 
-    ..warning ::
+    .. warning::
         The MTList have the same behavior as MTScatterWidget: coordinates of his
         children are relative to the MTList (not fixed to the screen.)
 
@@ -250,6 +247,3 @@ class MTList(MTStencilContainer):
 
     def draw(self):
         pass
-
-# Register all base widgets
-MTWidgetFactory.register('MTList', MTList)

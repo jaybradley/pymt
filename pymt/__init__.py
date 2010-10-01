@@ -1,8 +1,8 @@
 '''
-PyMT: multitouch toolkit
+PyMT: Python Multitouch Toolkit
 
 PyMT is an open source library for developing multi-touch applications. It is
-completely cross platform (Linux/OSX/Win) and released under the terms of the
+completely cross-platform (Linux/OSX/Win) and released under the terms of the
 GNU LGPL.
 
 It comes with native support for many multi-touch input devices, a growing
@@ -10,19 +10,22 @@ library of multi-touch aware widgets, hardware accelerated OpenGL drawing,
 and an architecture that is designed to let you focus on building custom and
 highly interactive applications as quickly and easily as possible.
 
-Since PyMT is a pure Python library, you can take advantage of its highly
-dynamic nature and use any of the thousands of high quality and open source
-python libraries out there.
+Thanks to PyMT's pure Python interface, you can take advantage of its highly
+dynamic nature and use any of the thousands of high quality Python libraries
+out there.
+At the same time, performance-critical sections are internally implemented
+on the C-level to maximize performance.
 
-You can visit http://pymt.eu/ for more informations !
+See http://pymt.eu for more information.
 '''
 
-__version__ = '0.5.0b4-dev'
+__version__ = '0.5.2-dev'
 
 import sys
 import getopt
 import os
-from logger import pymt_logger, LOG_LEVELS
+import shutil
+from pymt.logger import pymt_logger, LOG_LEVELS
 
 # internals for post-configuration
 __pymt_post_configuration = []
@@ -36,7 +39,7 @@ def pymt_configure():
 def pymt_register_post_configuration(callback):
     '''Register a function to be call when pymt_configure() will be called.
 
-    ..warning ::
+    .. warning::
         Internal use only.
     '''
     __pymt_post_configuration.append(callback)
@@ -44,8 +47,8 @@ def pymt_register_post_configuration(callback):
 # Start !
 pymt_logger.info('PyMT v%s' % (__version__))
 
-# Global settings options for pymt
-options = {
+#: Global settings options for pymt
+pymt_options = {
     'use_accelerate': True,
     'shadow_window': True,
     'window': ('pygame', 'glut'),
@@ -59,17 +62,18 @@ options = {
 }
 
 # Read environment
-for option in options:
+for option in pymt_options:
     key = 'PYMT_%s' % option.upper()
     if key in os.environ:
         try:
-            if type(options[option]) in (list, tuple):
-                options[option] = (str(os.environ[key]),)
+            if type(pymt_options[option]) in (list, tuple):
+                pymt_options[option] = (str(os.environ[key]),)
             else:
-                options[option] = os.environ[key].lower() in \
+                pymt_options[option] = os.environ[key].lower() in \
                     ('true', '1', 'yes', 'yup')
-        except:
-            pymt_logger.warning('Core: Wrong value for %s environment key' % key)
+        except Exception:
+            pymt_logger.warning('Core: Wrong value for %s'
+                                'environment key' % key)
             pymt_logger.exception('')
 
 # Extract all needed path in pymt
@@ -83,6 +87,8 @@ pymt_modules_dir     = os.path.join(pymt_base_dir, 'modules')
 pymt_data_dir        = os.path.join(pymt_base_dir, 'data')
 #: PyMT input provider directory
 pymt_providers_dir   = os.path.join(pymt_base_dir, 'input', 'providers')
+#: PyMT icons config path (don't remove last '')
+pymt_icons_dir        = os.path.join(pymt_data_dir, 'icons', '')
 #: PyMT user-home storage directory
 pymt_home_dir        = None
 #: PyMT configuration filename
@@ -101,16 +107,20 @@ if os.path.basename(sys.argv[0]) in ('sphinx-build', ):
 if not 'PYMT_DOC_INCLUDE' in os.environ:
 
     # Configuration management
-    pymt_home_dir = os.path.expanduser('~/.pymt/')
+    user_home_dir = os.path.expanduser('~')
+    pymt_home_dir = os.path.join(user_home_dir, '.pymt')
     pymt_config_fn = os.path.join(pymt_home_dir, 'config')
     if not os.path.exists(pymt_home_dir):
         os.mkdir(pymt_home_dir)
-    pymt_usermodules_dir = os.path.expanduser('~/.pymt/mods/')
+    pymt_usermodules_dir = os.path.join(pymt_home_dir, 'mods')
     if not os.path.exists(pymt_usermodules_dir):
         os.mkdir(pymt_usermodules_dir)
+    icon_dir = os.path.join(pymt_home_dir, 'icon')
+    if not os.path.exists(icon_dir):
+        shutil.copytree(os.path.join(pymt_data_dir, 'logo'), icon_dir)
 
     # configuration
-    from config import *
+    from pymt.config import *
 
     # Set level of logger
     level = LOG_LEVELS.get(pymt_config.get('pymt', 'log_level'))
@@ -130,39 +140,39 @@ if not 'PYMT_DOC_INCLUDE' in os.environ:
     # and configuration applied to logger.
 
     # first, compile & use accelerate module
-    from accelerate import *
+    from pymt.accelerate import *
 
     # no dependices at all
-    from baseobject import *
-    from exceptions import *
-    from resources import *
-    from cache import Cache
+    from pymt.baseobject import *
+    from pymt.exceptions import *
+    from pymt.resources import *
+    from pymt.cache import Cache
 
     # system dependices
-    from utils import *
-    from event import *
-    from clock import *
-    from texture import *
-    from plugin import *
+    from pymt.utils import *
+    from pymt.event import *
+    from pymt.clock import *
+    from pymt.texture import *
+    from pymt.plugin import *
 
     # internal dependices
-    from graphx import *
-    from vector import *
-    from geometry import *
+    from pymt.graphx import *
+    from pymt.vector import *
+    from pymt.geometry import *
 
     # dependices
-    from core import *
-    from modules import *
-    from input import *
-    from base import *
+    from pymt.core import *
+    from pymt.modules import *
+    from pymt.input import *
+    from pymt.base import *
 
     # after dependices
-    from gesture import *
-    from obj import OBJ
-    from loader import *
+    from pymt.gesture import *
+    from pymt.obj import OBJ
+    from pymt.loader import *
 
     # widgets
-    from ui import *
+    from pymt.ui import *
 
     # Can be overrided in command line
     try:
@@ -180,8 +190,8 @@ if not 'PYMT_DOC_INCLUDE' in os.environ:
                 pymt_usage()
                 sys.exit(0)
             elif opt in ('-p', '--provider'):
-                id, args = arg.split(':', 1)
-                pymt_config.set('input', id, args)
+                pid, args = arg.split(':', 1)
+                pymt_config.set('input', pid, args)
             elif opt in ('-a', '--auto-fullscreen'):
                 pymt_config.set('graphics', 'fullscreen', 'auto')
             elif opt in ('-k', '--fake-fullscreen'):
@@ -211,19 +221,20 @@ if not 'PYMT_DOC_INCLUDE' in os.environ:
             elif opt in ('-s', '--save'):
                 need_save = True
             elif opt in ('-n', ):
-                options['shadow_window'] = False
+                pymt_options['shadow_window'] = False
 
         if need_save:
             try:
                 with open(pymt_config_fn, 'w') as fd:
                     pymt_config.write(fd)
             except Exception, e:
-                pymt_logger.exception('Core: error while saving default configuration file')
+                pymt_logger.exception('Core: error while saving default'
+                                      'configuration file')
             pymt_logger.info('Core: PyMT configuration saved.')
             sys.exit(0)
 
         # last initialization
-        if options['shadow_window']:
+        if pymt_options['shadow_window']:
             pymt_logger.debug('Core: Creating PyMT Window')
             shadow_window = MTWindow()
             pymt_configure()
@@ -234,4 +245,6 @@ if not 'PYMT_DOC_INCLUDE' in os.environ:
         sys.exit(2)
 
 # cleanup namespace
-del sys, getopt, os
+if not 'PYMT_DOC_INCLUDE' in os.environ:
+    del level, need_save, opts, args
+del sys, getopt, os, key

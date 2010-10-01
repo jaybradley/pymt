@@ -4,9 +4,9 @@ Parser: default parser from string to special type
 Used specially for CSS
 '''
 
-__all__ = ['parse_image', 'parse_color', 'parse_int', 'parse_float',
+__all__ = ('parse_image', 'parse_color', 'parse_int', 'parse_float',
            'parse_string', 'parse_bool', 'parse_int2',
-           'parse_float4']
+           'parse_float4')
 
 import re
 from pymt.core.image import Image
@@ -21,7 +21,8 @@ def parse_image(filename):
         return Svg(filename)
     else:
         return Image(filename)
-    raise Exception('Error trying to load image specified in css: %s' % filename)
+    raise Exception('Error trying to load image specified in css: %s' \
+                    % filename)
 
 def parse_color(text):
     '''Parse a text color to a pymt color. Format supported are :
@@ -30,19 +31,20 @@ def parse_color(text):
         * #aaa
         * #rrggbb
     '''
-    value = (1, 1, 1, 1)
+    value = [1, 1, 1, 1]
     if text.startswith('rgb'):
         res = re.match('rgba?\((.*)\)', text)
         value = map(lambda x: int(x) / 255., re.split(',\ ?', res.groups()[0]))
         if len(value) == 3:
-            value.append(1)
+            value.append(1.)
     elif text.startswith('#'):
         res = text[1:]
         if len(res) == 3:
             res = ''.join(map(lambda x: x+x, res))
-        value = [int(x, 16)/255. for x in re.split('([0-9a-f]{2})', res) if x != '']
+        value = [int(x, 16) / 255. for x in re.split(
+                 '([0-9a-f]{2})', res) if x != '']
         if len(value) == 3:
-            value.append(1)
+            value.append(1.)
     return value
 
 def parse_bool(text):
@@ -67,7 +69,7 @@ def parse_int2(text):
 
     '''
     texts = [x for x in text.split(' ') if x.strip() != '']
-    value = map(lambda x: parse_int(x), texts)
+    value = map(parse_int, texts)
     if len(value) < 1:
         raise Exception('Invalid format int2 for %s' % text)
     elif len(value) == 1:
@@ -84,7 +86,7 @@ def parse_float4(text):
 
     '''
     texts = [x for x in text.split(' ') if x.strip() != '']
-    value = map(lambda x: parse_float(x), texts)
+    value = map(parse_float, texts)
     if len(value) < 1:
         raise Exception('Invalid format float4 for %s' % text)
     elif len(value) == 1:

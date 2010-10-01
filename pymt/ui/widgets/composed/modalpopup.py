@@ -2,13 +2,12 @@
 ModalPopup: a simple popup that use modal window
 '''
 
-__all__ = ['MTModalPopup']
+__all__ = ('MTModalPopup', )
 
-from ..xmlwidget import XMLWidget
-from ..modalwindow import MTModalWindow
-from ...factory import MTWidgetFactory
-from ....graphx import set_color, drawCSSRectangle
-from ....vector import Vector
+from pymt.ui.widgets.xmlwidget import XMLWidget
+from pymt.ui.widgets.modalwindow import MTModalWindow
+from pymt.graphx import set_color, drawCSSRectangle
+from pymt.vector import Vector
 
 def escape(s):
     return s.replace('"', '\\&quot;').replace('\'', '\\&quot;').replace('<', '&lt;').replace('>', '&gt;')
@@ -39,6 +38,7 @@ class MTModalPopup(MTModalWindow):
                     anchor_y='"center"' height='40'/>
                 <MTLabel id='"popupcontent"' cls='"modalpopup-content"' label='"%s"'
                     size_hint='(1,1)' autosize='False' autowidth='False'
+                    multiline='True'
                     autoheight='False' halign='"center"' anchor_y='"center"'/>
                 <MTButton id='"popupsubmit"' cls='"modalpopup-submit"' label='"OK"'
                     size_hint='(1,None)' height='40' valign='"center"'
@@ -54,7 +54,6 @@ class MTModalPopup(MTModalWindow):
         self._xml = xml
 
     def on_popup_draw(self):
-        from pymt.graphx import set_color, drawCSSRectangle
         self._xml.root.center = self.get_parent_window().center
         popup = self._xml.getById('popup')
         set_color(*self.style.get('bg-color-full'))
@@ -68,7 +67,3 @@ class MTModalPopup(MTModalWindow):
 
     def add_widget(self, widget):
         raise Exception('MTModalPopup cannot have children')
-
-
-# Register all base widgets
-MTWidgetFactory.register('MTModalPopup', MTModalPopup)

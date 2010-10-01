@@ -5,18 +5,18 @@ VKeyboard: Virtual keyboard with custom layout support
 
 import os
 import pymt
-from ....base import getFrameDt
-from ....graphx import set_color, drawCSSRectangle, drawLabel, GlDisplayList, \
-                       gx_matrix, drawRoundedRectangle, getLastLabel
-from ....clock import getClock
-from ....utils import curry
-from ....vector import Vector
-from ...factory import MTWidgetFactory
-from ..scatter import MTScatterWidget
-from kineticlist import MTKineticList, MTKineticItem
-from OpenGL.GL import *#glScalef, glTranslatef
+from pymt.base import getFrameDt
+from pymt.graphx import set_color, drawCSSRectangle, drawLabel, GlDisplayList, \
+        gx_matrix, getLastLabel
+from pymt.clock import getClock
+from pymt.utils import curry
+from pymt.vector import Vector
+from pymt.ui.widgets.scatter import MTScatterWidget
+from pymt.ui.widgets.composed.kineticlist import MTKineticList, MTKineticItem
+from OpenGL.GL import glScalef, glTranslatef
 
-__all__ = ('MTVKeyboard', 'KeyboardLayout', 'KeyboardLayoutQWERTY', 'KeyboardLayoutAZERTY')
+__all__ = ('MTVKeyboard', 'KeyboardLayout', 'KeyboardLayoutQWERTY',
+           'KeyboardLayoutAZERTY')
 
 class KeyboardLayout(object):
     '''Base for all Keyboard Layout'''
@@ -184,32 +184,32 @@ class KeyboardLayoutAZERTY(KeyboardLayout):
 
 class MTVKeyboard(MTScatterWidget):
     '''
-    MTVKeyboard is a OnBoard keyboard, with Multitouch support.
-    Layout are entirely customizable, and you can switch from layout with
-    little button in bottom-right of keyboard.
+    MTVKeyboard is an onscreen keyboard with multitouch support.
+    Its layout is entirely customizable and you can switch between available
+    layouts using a button in the bottom right of the widget.
 
     :Parameters:
         `layout` : KeyboardLayout object, default to None
-            If none, keyboard layout will be created from configuration
+            If None, keyboard layout will be created from configuration
             property.
         `time_lazy_update` : float, default to 0.2
-            Time in seconds of force a lazy update when keyboard size change
+            Time in seconds to force a lazy update when keyboard size changes
         `repeat` : float, default to 0.2
-            If 1/15., will repeat the last key 5 time per seconds
+            Key repeat rate. 1/15. will repeat the last key 5 times per seconds
         `repeat_timeout` : float, default to 0.2
-            Will start repeatition after 200ms
+            Will start to repeat the key after 200ms
 
     :Events:
         `on_key_down` : key
-            Fired when a key is down
-            The key contain: displayed_str, internal_str, internal_action, width
+            Fired when a key is down.
+            The key contains: displayed_str, internal_str, internal_action, width
         `on_key_up` : key
-            Fired when a key is up
-            The key contain: displayed_str, internal_str, internal_action, width
+            Fired when a key is up.
+            The key contains: displayed_str, internal_str, internal_action, width
         `on_text_change` : text
             Fired when the internal text is changed
 
-    List of internal action availables :
+    List of internal actions available :
 
     * backspace
     * capslock
@@ -520,7 +520,7 @@ class MTVKeyboard(MTScatterWidget):
         keysize = Vector(w / kx, h / ky)
         if x < mleft or x > self.width - mright or \
            y < mbottom or y > self.height - mtop:
-               return None
+            return None
         index = ky-int((y - mbottom) /
                 (self.height - mtop - mbottom)
                 * ky)
@@ -606,6 +606,3 @@ class MTVKeyboard(MTScatterWidget):
 if not 'PYMT_DOC' in os.environ:
     MTVKeyboard.add_custom_layout(KeyboardLayoutQWERTY)
     MTVKeyboard.add_custom_layout(KeyboardLayoutAZERTY)
-
-# Register all base widgets
-MTWidgetFactory.register('MTVKeyboard', MTVKeyboard)

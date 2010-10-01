@@ -17,7 +17,7 @@ else:
         for option, modulename, classname in llist:
             try:
                 # module activated in config ?
-                if option not in pymt.options[category]:
+                if option not in pymt.pymt_options[category]:
                     pymt.pymt_logger.debug('%s: option <%s> ignored by config' %
                         (category.capitalize(), option))
                     continue
@@ -35,12 +35,12 @@ else:
                 return cls
 
             except Exception as e:
-                pymt.pymt_logger.warning('%s: Unable to use <%s> as %s provider' %
-                    (category.capitalize(), option, category))
+                pymt.pymt_logger.warning('%s: Unable to use <%s> as %s'
+                     'provider' % ( category.capitalize(), option, category))
                 pymt.pymt_logger.debug('', exc_info=e)
 
-        pymt.pymt_logger.critical('%s: Unable to find any valuable %s provider at all!' %
-            (category.capitalize(),category.capitalize()))
+        pymt.pymt_logger.critical('%s: Unable to find any valuable %s provider'
+              'at all!' % (category.capitalize(),category.capitalize()))
 
 
     def core_register_libs(category, libs):
@@ -48,16 +48,17 @@ else:
         for option, lib in libs:
             try:
                 # module activated in config ?
-                if option not in pymt.options[category]:
+                if option not in pymt.pymt_options[category]:
                     pymt.pymt_logger.debug('%s: option <%s> ignored by config' %
                         (category.capitalize(), option))
                     continue
 
                 # import module
-                mod = __import__(name='%s.%s' % (category, lib),
-                                 globals=globals(),
-                                 locals=locals(),
-                                 fromlist=[lib], level=-1)
+                __import__(name='%s.%s' % (category, lib),
+                           globals=globals(),
+                           locals=locals(),
+                           fromlist=[lib],
+                           level=-1)
 
             except Exception as e:
                 pymt.pymt_logger.warning('%s: Unable to use <%s> as loader!' %
@@ -65,13 +66,13 @@ else:
                 pymt.pymt_logger.debug('', exc_info=e)
 
 
-from audio import *
-from camera import *
-from image import *
-from text import *
-from video import *
-from svg import *
-from spelling import *
+from pymt.core.audio import *
+from pymt.core.camera import *
+from pymt.core.image import *
+from pymt.core.text import *
+from pymt.core.video import *
+from pymt.core.svg import *
+from pymt.core.spelling import *
 
 # only after core loading, load extensions
 from text.markup import *

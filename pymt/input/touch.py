@@ -1,15 +1,16 @@
 '''
-Touch: base for all touch objects
+Touch: Base for all touch objects
 
 
-Every touch in PyMT application are derivated from Touch class.
-A touch can be more or less specific, it depend on the provider.
-As example, TUIO provider can give you lot of information about position,
-acceleration, width/height of the shape etc.. And the wiimote provider can
-give you information about the button up/down etc...
+Every touch in PyMT derives from the abstract Touch class.
+A touch can have more or less attributes, depending on the provider.
+For example, the TUIO provider can give you a lot of information about the touch,
+like position, acceleration, width/height of the shape and so on.
+Another provider might just give you x/y coordinates and pressure.
 
-So, we call that "capabilities.". Capabilities is handle in the "profile"
-property on a Touch. It's a simple list with string that contains :
+We call these attributes "capabilities". Every touch indicates its
+capabilities in its "profile" property.
+A profile is just a simple list with strings, containing for example:
 
     * pos (property x, y)
     * pos3d (property x, y, z)
@@ -26,31 +27,29 @@ property on a Touch. It's a simple list with string that contains :
     * motacc (tuio/property m)
     * shape (property shape)
     * kinetic
-    * ... and other could be added by new classes
+    * ... and others could be added by new classes
 
-When you are on the on_touch_down(self, touch) handler, you can filter by
-testing the profile ::
+If you're only interested in a certain kind of touches, check the profile::
 
     def on_touch_down(self, touch):
-        if 'markerid' not in touch:
-            # not a fiducial, abandon
+        if 'markerid' not in touch.profile:
+            # not a fiducial, not interesting
             return
-
 
 '''
 
-__all__ = ['Touch']
+__all__ = ('Touch', )
 
 import weakref
 from inspect import isroutine
-from ..utils import SafeList
-from ..clock import getClock
-from ..vector import Vector
 from copy import copy
+from pymt.utils import SafeList
+from pymt.clock import getClock
+from pymt.vector import Vector
 
 
-class TouchMetaclass(type):  
-    def __new__(cls, name, bases, attrs):  
+class TouchMetaclass(type):
+    def __new__(mcs, name, bases, attrs):
         __attrs__ = []
         for base in bases:
             if hasattr(base, '__attrs__'):
@@ -58,7 +57,7 @@ class TouchMetaclass(type):
         if '__attrs__' in attrs:
             __attrs__.extend(attrs['__attrs__'])
         attrs['__attrs__'] = tuple(__attrs__)
-        return super(TouchMetaclass, cls).__new__(cls, name, bases, attrs)  
+        return super(TouchMetaclass, mcs).__new__(mcs, name, bases, attrs)
 
 
 class Touch(object):
@@ -74,7 +73,7 @@ class Touch(object):
     __metaclass__ = TouchMetaclass
     __uniq_id = 0
     __attrs__ = \
-        ('device', 'attr', 
+        ('device', 'attr',
          'id', 'sx', 'sy', 'sz', 'profile',
          'x', 'y', 'z', 'shape',
          'dxpos', 'dypos', 'dzpos',
@@ -95,6 +94,10 @@ class Touch(object):
 
         # For push/pop
         self.attr = []
+        self.default_attrs = (
+            'x', 'y', 'z',
+            'dxpos', 'dypos', 'dzpos',
+            'oxpos', 'oypos', 'ozpos')
 
         # For grab
         self.grab_list = SafeList()
@@ -199,9 +202,11 @@ class Touch(object):
             self.dypos = self.oypos = self.y
             self.dzpos = self.ozpos = self.z
 
-    def push(self, attrs=['x', 'y', 'z', 'dxpos', 'dypos', 'dzpos']):
+    def push(self, attrs=None):
         '''Push attributes values in `attrs` in the stack'''
-        values = map(lambda x: getattr(self, x), attrs)
+        if attrs is None:
+            attrs = self.default_attrs
+        values = [getattr(self, x) for x in attrs]
         self.attr.append((attrs, values))
 
     def pop(self):
@@ -209,6 +214,12 @@ class Touch(object):
         attrs, values = self.attr.pop()
         for i in xrange(len(attrs)):
             setattr(self, attrs[i], values[i])
+
+    def apply_transform_2d(self, transform):
+        '''Apply a transformation on x, y, dxpos, dypos, oxpos, oypos'''
+        self.x, self.y = transform(self.x, self.y)
+        self.dxpos, self.dypos = transform(self.dxpos, self.dypos)
+        self.oxpos, self.oypos = transform(self.oxpos, self.oypos)
 
     def copy_to(self, to):
         '''Copy some attribute to another touch object.'''
@@ -218,7 +229,7 @@ class Touch(object):
     def __str__(self):
         classname = str(self.__class__).split('.')[-1].replace('>', '').replace('\'', '')
         return '<%s spos=%s pos=%s>' % (classname, str(self.spos), str(self.pos))
-        
+
     def distance(self, other_touch):
         return Vector(self.pos).distance(other_touch.pos)
 
@@ -265,9 +276,3 @@ class Touch(object):
     xpos = property(lambda self: self.x)
     ypos = property(lambda self: self.y)
     blobID = property(lambda self: self.id)
-    xmot = property(lambda self: self.X)
-    ymot = property(lambda self: self.Y)
-    zmot = property(lambda self: self.Z)
-    mot_accel = property(lambda self: self.m)
-    rot_accel = property(lambda self: self.r)
-    angle = property(lambda self: self.a)

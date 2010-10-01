@@ -2,23 +2,16 @@
 Button package: implement different type of button
 '''
 
-
-__all__ = ['MTButton', 'MTToggleButton', 'MTImageButton']
+__all__ = ('MTButton', 'MTToggleButton', 'MTImageButton')
 
 import pymt
 import weakref
-from OpenGL.GL import *
-from ...graphx import GlDisplayList, set_color, gx_blending
-from ...graphx import drawCSSRectangle
-from ...utils import SafeList
-from ..factory import MTWidgetFactory
-from widget import MTWidget
-from label import MTLabel
+from pymt.graphx import GlDisplayList, set_color, gx_blending, drawCSSRectangle
+from pymt.utils import SafeList
+from pymt.ui.widgets.label import MTLabel
 
 class MTButton(MTLabel):
     '''MTButton is a button implementation using MTLabel
-
-    .. warnin
 
     :Parameters:
         `label` : string, default is ''
@@ -83,6 +76,7 @@ class MTButton(MTLabel):
         # FIXME, would be nice to suppress it !
         kwargs.setdefault('size', (100, 100))
         self._state         = 'normal'
+        self._state_color   = 'color'
         self._current_touch = None
 
         super(MTButton, self).__init__(**kwargs)
@@ -91,19 +85,13 @@ class MTButton(MTLabel):
         self.register_event_type('on_release')
         self.register_event_type('on_state_change')
 
-    def on_press(*largs):
+    def on_press(self, *largs):
         pass
 
-    def on_release(*largs):
+    def on_release(self, *largs):
         pass
 
-    def on_state_change(*largs):
-        pass
-
-    def on_press(*largs):
-        pass
-
-    def on_release(*largs):
+    def on_state_change(self, *largs):
         pass
 
     def on_touch_down(self, touch):
@@ -139,6 +127,9 @@ class MTButton(MTLabel):
         if self._state == state:
             return False
         self._state = state
+        self._state_color = 'color-%s' % state
+        if not self._state_color in self.style:
+            self.style[self._state_color] = self.style['color']
         self.dispatch_event('on_state_change', state)
         return True
     state = property(_get_state, _set_state,
@@ -153,17 +144,17 @@ class MTButton(MTLabel):
                          state=self.state)
 
     def draw_label(self, dx=0, dy=0):
-        if self.style['draw-text-shadow']:
-            tsp = self.style['text-shadow-position']
-            tsp_old = tsp[:]
-            tsp[0] += dx
-            tsp[1] += dy
-            old_color = self.kwargs.get('color')
-            self.kwargs['color'] = self.style['text-shadow-color']
+        style = self.style
+        kwargs = self.kwargs
 
-            super(MTButton, self).draw_label(*tsp)
-            self.kwargs['color'] = old_color
-            self.style['text-shadow-position'] = tsp_old
+        if style['draw-text-shadow']:
+            tx, ty = style['text-shadow-position']
+            kwargs['color'] = style['text-shadow-color']
+            super(MTButton, self).draw_label(dx + tx, dy + ty)
+            kwargs['color'] = style['color']
+
+        # set color to state color if exist
+        kwargs['color'] = style[self._state_color]
         super(MTButton, self).draw_label(dx, dy)
 
 
@@ -297,8 +288,3 @@ class MTImageButton(MTButton):
         s                   = self.image.size
         self.size           = s[0] * self.scale, s[1] * self.scale
         self.image.draw()
-
-
-MTWidgetFactory.register('MTToggleButton', MTToggleButton)
-MTWidgetFactory.register('MTButton', MTButton)
-MTWidgetFactory.register('MTImageButton', MTImageButton)

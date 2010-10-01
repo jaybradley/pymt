@@ -2,12 +2,12 @@
 Tabs widget: widget that provide tabs (like tabbed notebook)
 '''
 
-__all__ = ['MTTabs']
+__all__ = ('MTTabs', )
 
-from ...factory import MTWidgetFactory
-from ..widget import MTWidget
-from ..button import MTButton
-from ..layout.boxlayout import MTBoxLayout
+from pymt.utils import curry
+from pymt.ui.widgets.widget import MTWidget
+from pymt.ui.widgets.button import MTButton
+from pymt.ui.widgets.layout.boxlayout import MTBoxLayout
 
 class MTTabs(MTWidget):
     '''Class that implement a tabbed notebook.
@@ -33,7 +33,7 @@ class MTTabs(MTWidget):
 		tabs.add_widget(MTButton(label="World"), tab='Tab2')
 		tabs.select('Tab2')
 
-    warning ::
+    .. warning::
         The position of this widget is the upper-left of the widget.
         The reason is if they are multiple tabs with multiple height,
         tabs will always moving when switching from one to another.
@@ -66,13 +66,11 @@ class MTTabs(MTWidget):
                 tab = widget.tab
         button = MTButton(label=tab, size=(120, 40))
         button.tab_container = self
-        @button.event
-        def on_release(touch):
-            self.select(tab)
+        button.connect('on_release', curry(self.select, tab))
         self.topbar.add_widget(button)
         self.tabs[tab] = (button, widget)
 
-    def select(self, tab):
+    def select(self, tab, *l):
         if tab not in self.tabs:
             return
         button, widget = self.tabs[tab]
@@ -81,5 +79,3 @@ class MTTabs(MTWidget):
         self.layout.add_widget(widget, do_layout=False)
         self.current = widget
         self.layout.do_layout()
-
-MTWidgetFactory.register('MTTabs', MTTabs)

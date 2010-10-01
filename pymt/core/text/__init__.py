@@ -7,8 +7,8 @@ __all__ = ('LabelBase', 'Label')
 import pymt
 import re
 import os
-from .. import core_select_lib
-from ...baseobject import BaseObject
+from pymt.core import core_select_lib
+from pymt.baseobject import BaseObject
 
 DEFAULT_FONT = 'Liberation Sans,Bitstream Vera Sans,Free Sans,Arial, Sans'
 
@@ -18,7 +18,7 @@ class LabelBase(BaseObject):
     '''Core text label.
     This is the abstract class used for different backend to render text.
 
-    ..warning ::
+    .. warning::
         The core text label can't be changed at runtime, you must recreate one.
 
     :Parameters:
@@ -51,6 +51,17 @@ class LabelBase(BaseObject):
             Vertical text alignement inside bounding box
         `color`: list, default to (1, 1, 1, 1)
             Text color in (R, G, B, A)
+        `viewport_pos`: list, default to None
+            An bottom/left position of the viewport inside the label texture.
+            This property is used only if `viewport_size` is set.
+        `viewport_size`: list, default to None
+            Width/height of the viewport, if you don't want to show the whole
+            texture. This could be used to limit the drawing of the label to a
+            certain zone, and prevent to drawing outside the viewport.
+            If the label have a size of (1800, 25) with a viewport_size of (100,
+            100), the drawing will not go outside the viewport, but start from
+            (0, 0). 
+            If you want to draw another part of the texture, use `viewport_pos`.
     '''
 
     __slots__ = ('options', 'texture', '_label', 'color', 'usersize')
@@ -68,17 +79,27 @@ class LabelBase(BaseObject):
         kwargs.setdefault('halign', 'left')
         kwargs.setdefault('valign', 'bottom')
         kwargs.setdefault('padding', None)
-        kwargs.setdefault('padding_x', 0)
-        kwargs.setdefault('padding_y', 0)
+        kwargs.setdefault('padding_x', None)
+        kwargs.setdefault('padding_y', None)
         kwargs.setdefault('color', (1, 1, 1, 1))
+        kwargs.setdefault('viewport_size', None)
+        kwargs.setdefault('viewport_pos', None)
 
         padding = kwargs.get('padding', None)
-        if type(padding) in (tuple, list):
-            kwargs['padding_x'] = float(padding[0])
-            kwargs['padding_y'] = float(padding[1])
-        elif padding is not None:
-            kwargs['padding_x'] = float(padding)
-            kwargs['padding_y'] = float(padding)
+        if not kwargs.get('padding_x', None):
+            if type(padding) in (tuple, list):
+                kwargs['padding_x'] = float(padding[0])
+            elif padding is not None:
+                kwargs['padding_x'] = float(padding)
+            else:
+                kwargs['padding_x'] = 0
+        if not kwargs.get('padding_y', None):
+            if type(padding) in (tuple, list):
+                kwargs['padding_y'] = float(padding[1])
+            elif padding is not None:
+                kwargs['padding_y'] = float(padding)
+            else:
+                kwargs['padding_y'] = 0
 
         uw, uh = kwargs['size']
         if uw != None:
@@ -92,6 +113,8 @@ class LabelBase(BaseObject):
         self.usersize   = kwargs.get('size')
         self.options    = kwargs
         self.texture    = None
+        self.viewport_size  = kwargs.get('viewport_size')
+        self.viewport_pos   = kwargs.get('viewport_pos')
 
         if 'font_name' in self.options:
             fontname = self.options['font_name']
@@ -227,7 +250,8 @@ class LabelBase(BaseObject):
                         x = int(self.width - size[0])
                     for glyph in glyphs:
                         lw, lh = cache[glyph]
-                        self._render_text(glyph, x, y)
+                        if glyph != '\n':
+                            self._render_text(glyph, x, y)
                         x += lw
                     y += size[1]
 
@@ -274,12 +298,25 @@ class LabelBase(BaseObject):
             # it's a empty label, don't waste time to draw it
             return
 
+        dx = 0
+        dy = 0
         x, y = self.pos
         w, h = self.size
         anchor_x = self.options['anchor_x']
         anchor_y = self.options['anchor_y']
         padding_x = self.options['padding_x']
         padding_y = self.options['padding_y']
+
+        viewport_size = self.viewport_size
+        viewport_pos = self.viewport_pos
+
+        # if a viewport is given, use the size of viewport.
+        if viewport_size:
+            vw, vh = viewport_size
+            if vw < w:
+                w = vw
+            if vh < h:
+                h = vh
 
         if anchor_x == 'left':
             x += padding_x
@@ -299,9 +336,40 @@ class LabelBase(BaseObject):
         if len(self.options['color']) > 3:
             alpha = self.options['color'][3]
         pymt.set_color(1, 1, 1, alpha, blend=True)
+
+        texture = self.texture
+        size = list(texture.size)
+        texc = texture.tex_coords[:]
+        if viewport_size:
+            vw, vh = map(float, viewport_size)
+            tw, th = map(float, size)
+            oh, ow = tch, tcw = texc[1:3]
+            tcx, tcy = 0, 0
+            if vw < tw:
+                tcw = (vw / tw) * tcw
+                size[0] = vw
+            if vh < th:
+                tch = (vh / th) * tch
+                size[1] = vh
+
+            if viewport_pos:
+                tcx, tcy = viewport_pos
+                # 100
+                tcx = tcx / tw * ow
+                tcy = tcy / th * oh
+
+            # FIXME work only with flipped texture ?
+            # GH EF
+            # AB CD
+            # usual: a, b, c, d, e, f, g, h
+            # flip: g, h, e, f, c, d, a, b
+            # usual: tcx, tcy, tcx+tcw, tcy, tcx+tcw, tcy+tch, tcx, tcy+tch
+            texc = (tcx, tcy+tch, tcx+tcw, tcy+tch, tcx+tcw, tcy, tcx, tcy)
         pymt.drawTexturedRectangle(
-            texture=self.texture,
-            pos=(int(x), int(y)), size=self.texture.size)
+            texture=texture,
+            pos=(int(x), int(y)),
+            size=size,
+            tex_coords=texc)
 
     def _get_label(self):
         return self._label

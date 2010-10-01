@@ -4,14 +4,12 @@ Slider package: provide multiple slider implementation (simple, xy, boundary...)
 
 from __future__ import division
 
-import random
-__all__ = ['MTSlider', 'MTXYSlider', 'MTBoundarySlider', 'MTMultiSlider']
+__all__ = ('MTSlider', 'MTXYSlider', 'MTBoundarySlider', 'MTMultiSlider')
 
-from OpenGL.GL import *
-from ...graphx import drawRectangle, drawCircle, drawLabel, set_color, drawRoundedRectangle, drawRectangleAlpha, drawRoundedRectangleAlpha
-from ...graphx import drawCSSRectangle
-from ..factory import MTWidgetFactory
-from widget import MTWidget
+import random
+from pymt.ui.widgets.widget import MTWidget
+from pymt.graphx import drawRectangle, drawCircle, drawLabel, set_color, \
+        drawCSSRectangle
 
 class MTSlider(MTWidget):
     '''MTSlider is an implementation of a scrollbar using MTWidget.
@@ -34,6 +32,8 @@ class MTSlider(MTWidget):
     :Styles:
         `slider-color` : color
             Color of the slider
+        `slider-color-down` : color
+            Color of the slider when pressed down (same as slider-color by default)
         `bg-color` : color
             Background color of the slider
         `padding` : int
@@ -80,31 +80,35 @@ class MTSlider(MTWidget):
     value = property(get_value, set_value, doc='Value of the slider')
 
     def draw(self):
-        p2 = self.style['padding'] / 2
+        px, py = self.style['padding']
+        px2, py2 = px / 2., py / 2.
         diff = self.max - self.min
         if self.orientation == 'vertical':
             if diff == 0:
                 length = 0
             else:
                 length = int((self._value - self.min) * \
-                             (self.height - self.style['padding']) / diff)
-            pos = self.x + p2, self.y + p2
-            size = self.width - self.style['padding'], length
+                             (self.height - py) / diff)
+            pos = self.x + px2, self.y + py2
+            size = self.width - px, length
         else:
             if diff == 0:
                 length = 0
             else:
                 length = int((self._value - self.min) * \
-                             (self.width - self.style['padding']) / diff)
-            pos = self.x + p2, self.y + p2
-            size = length, self.height - self.style['padding']
+                             (self.width - px) / diff)
+            pos = self.x + px2, self.y + py2
+            size = length, self.height - py
 
         # draw outer rectangle
         set_color(*self.style.get('bg-color'))
         drawCSSRectangle(pos=self.pos, size=self.size, style=self.style)
 
         # draw inner rectangle
-        set_color(*self.style.get('slider-color'))
+        if self.touchstarts:
+            set_color(*self.style.get('slider-color-down'))
+        else:
+            set_color(*self.style.get('slider-color'))
         drawCSSRectangle(pos=pos, size=size, style=self.style, prefix='slider')
 
         if self.value_show:
@@ -293,7 +297,6 @@ class MTBoundarySlider(MTWidget):
         self.orientation    = kwargs.get('orientation')
         if self.orientation not in ('horizontal', 'vertical'):
             raise Exception('Invalid orientation %s. Must be horizontal or vertical' % self.orientation)
-        self.padding        = kwargs.get('padding')
         self.min            = kwargs.get('min')
         self.max            = kwargs.get('max')
         self.showtext       = kwargs.get('showtext')
@@ -329,7 +332,7 @@ class MTBoundarySlider(MTWidget):
             tmax = (self.value_max / self.width) * self.max
         return tmin, tmax
 
-    def on_value_change(self, min, max):
+    def on_value_change(self, vmin, vmax):
         pass
 
     @property
@@ -339,16 +342,18 @@ class MTBoundarySlider(MTWidget):
         return self.width / (self.max - self.min)
 
     def draw(self):
-        p = self.style['padding']
-        p2 = p / 2
+        px, py = self.style['padding']
+        px2, py2 = px / 2, py / 2
         if self.orientation == 'vertical':
-            pos = (self.x + p2, self.y + self.value_min * self.ratio + p2)
-            size = (self.width - p, (self.value_max - self.value_min) * self.ratio - p)
+            pos = (self.x + px2, self.y + self.value_min * self.ratio + py2)
+            size = (self.width - px, (self.value_max - self.value_min) *
+                    self.ratio - py)
             textposmin = (self.x + self.width, self.y + self.value_min * self.ratio)
             textposmax = (self.x + self.width, self.y + self.value_max * self.ratio)
         elif self.orientation == 'horizontal':
-            pos = (self.x + self.value_min * self.ratio + p2, self.y + p2)
-            size = ((self.value_max - self.value_min) * self.ratio - p, self.height - p)
+            pos = (self.x + self.value_min * self.ratio + px2, self.y + py2)
+            size = ((self.value_max - self.value_min) * self.ratio - px,
+                    self.height - py)
             textposmin = (self.x + self.value_min * self.ratio, self.y + self.height)
             textposmax = (self.x + self.value_max * self.ratio, self.y + self.height)
 
@@ -451,7 +456,7 @@ class MTMultiSlider(MTWidget):
     '''
     def __init__(self, **kwargs):
         kwargs.setdefault('sliders', 20)
-        kwargs.setdefault('size', (400,300))
+        kwargs.setdefault('size', (400, 300))
         kwargs.setdefault('spacing', 1)
         kwargs.setdefault('init_value', 0.5)
         super(MTMultiSlider, self).__init__(**kwargs)
@@ -470,7 +475,8 @@ class MTMultiSlider(MTWidget):
             self.slider_values = self.slider_values[0:quantity]
             self._sliders = quantity
         if quantity > self._sliders:
-            self.slider_values = self.slider_values + list([self._init_value for x in range(quantity - self._sliders)])
+            self.slider_values = self.slider_values + list(
+                [self._init_value for x in range(quantity - self._sliders)])
             self._sliders = quantity
         else:
             return
@@ -486,7 +492,7 @@ class MTMultiSlider(MTWidget):
     def draw(self):
         # Draw background
         set_color(*self.style.get('bg-color'))
-        drawRectangle(pos=(self.x,self.y), size=(self.width,self.height))
+        drawRectangle(pos=self.pos, size=self.size)
         # Draw sliders
         set_color(*self.style.get('slider-color'))
         for slider in range(self._sliders):
@@ -529,9 +535,4 @@ class MTMultiSlider(MTWidget):
 
     def return_slider(self, x):
         return int((x - self.x) / float(self.width)  * self._sliders)
-
-MTWidgetFactory.register('MTXYSlider', MTXYSlider)
-MTWidgetFactory.register('MTSlider', MTSlider)
-MTWidgetFactory.register('MTBoundarySlider', MTBoundarySlider)
-MTWidgetFactory.register('MTMultiSlider', MTMultiSlider)
 

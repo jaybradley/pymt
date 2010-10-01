@@ -9,22 +9,9 @@ For example, if you want to get length of a vector ::
 
 '''
 
-__all__ = ['Vector', 'matrix_inv_mult', 'matrix_trans_mult', 'matrix_mult']
+__all__ = ('Vector', )
 
 import math
-from pymt.logger import pymt_logger
-
-_use_numpy = False
-
-try:
-    import numpy
-    _use_numpy = True
-except:
-    pymt_logger.warning('you do not have numpy installed.  Computing '
-        'transformations for MTScatterWidget can get painfully '
-        'slow without numpy. You should install numpy: '
-        'http://numpy.scipy.org/')
-    from matrix import Matrix, RowVector
 
 class Vector(list):
     '''Represents a 2D vector.'''
@@ -54,7 +41,7 @@ class Vector(list):
             # use the list __getslice__ method and convert
             # result to vector
             return Vector(super(Vector, self).__getslice__(i, j))
-        except:
+        except Exception:
             raise TypeError, 'vector::FAILURE in __getslice__'
 
     def __add__(self, val):
@@ -87,7 +74,7 @@ class Vector(list):
     def __mul__(self, val):
         try:
             return Vector(map(lambda x, y: x * y, self, val))
-        except:
+        except Exception:
             return Vector(map(lambda x: x * val, self))
 
     def __imul__(self, val):
@@ -105,19 +92,19 @@ class Vector(list):
     def __truediv__(self, val):
         try:
             return Vector(map(lambda x, y: x / y, self, val))
-        except:
+        except Exception:
             return Vector(map(lambda x: x / val, self))
 
     def __div__(self, val):
         try:
             return Vector(map(lambda x, y: x / y, self, val))
-        except:
+        except Exception:
             return Vector(map(lambda x: x / val, self))
 
     def __rdiv__(self, val):
         try:
             return Vector(map(lambda x, y: x / y, other, val))
-        except:
+        except Exception:
             return Vector(map(lambda x: other / x, val))
 
     def __idiv__(self, val):
@@ -150,7 +137,7 @@ class Vector(list):
         '''Returns a new vector that has the same direction as vec,
         but has a length of one.'''
         if self[0] == 0. and self[1] == 0.:
-            return Vector(0.,0.)
+            return Vector(0., 0.)
         return self / self.length()
 
     def dot(self, a):
@@ -180,8 +167,8 @@ class Vector(list):
         For math see: http://en.wikipedia.org/wiki/Line-line_intersection
         '''
         #linear algebar sucks...seriously!!
-        x1,x2,x3,x4 = float(v1[0]), float(v2[0]), float(v3[0]), float(v4[0])
-        y1,y2,y3,y4 = float(v1[1]), float(v2[1]), float(v3[1]), float(v4[1])
+        x1, x2, x3, x4 = float(v1[0]), float(v2[0]), float(v3[0]), float(v4[0])
+        y1, y2, y3, y4 = float(v1[1]), float(v2[1]), float(v3[1]), float(v4[1])
 
         u = (x1 * y2 - y1 * x2)
         v = (x3 * y4 - y3 * x4)
@@ -192,7 +179,7 @@ class Vector(list):
         px = ( u * (x3 - x4)  -  (x1 - x2) * v ) / denom
         py = ( u * (y3 - y4)  -  (y1 - y2) * v ) / denom
 
-        return Vector(px,py)
+        return Vector(px, py)
 
     @staticmethod
     def in_bbox(point, a, b):
@@ -202,59 +189,3 @@ class Vector(list):
                 (point[1] <= a[1] and point[1] >= b[1] or
                  point[1] <= b[1] and point[1] >= a[1]))
 
-
-def matrix_inv_mult(m, v):
-    '''Takes an openGL matrix and a 2 Vector and returns
-    the inverse of teh matrix applied to the vector'''
-    if _use_numpy:
-        mat = numpy.matrix(m)
-        vec = numpy.matrix(v)
-        inv = mat.I
-        result = vec*inv
-        return Vector(result[0,0],result[0,1])
-    else:
-        mat = Matrix([
-            RowVector(list(m[0])),
-            RowVector(list(m[1])),
-            RowVector(list(m[2])),
-            RowVector(list(m[3]))] )
-        vec = RowVector(v)
-        result = vec*mat.inverse()
-
-        return Vector(result[1], result[2])
-
-def matrix_trans_mult(m, v):
-    '''Takes an openGL matrix and a 2 Vector and return
-    the transpose of teh matrix applied to the vector'''
-    if _use_numpy:
-        mat = numpy.matrix(m)
-        vec = numpy.matrix(v)
-        result = vec*mat.T
-        return Vector(result[0,0],result[0,1])
-    else:
-        mat = Matrix([
-            RowVector(list(m[0])),
-            RowVector(list(m[1])),
-            RowVector(list(m[2])),
-            RowVector(list(m[3]))] )
-        vec = RowVector(v)
-        result = vec*mat.transpose()
-        return Vector(result[1], result[2])
-
-def matrix_mult(m, v):
-    '''Takes an openGL matrix and a 2 Vector and returns
-    the matrix applied to the vector'''
-    if _use_numpy:
-        mat = numpy.matrix(m)
-        vec = numpy.matrix(v)
-        result = vec*mat
-        return Vector(result[0,0],result[0,1])
-    else:
-        mat = Matrix([
-            RowVector(list(m[0])),
-            RowVector(list(m[1])),
-            RowVector(list(m[2])),
-            RowVector(list(m[3]))] )
-        vec = RowVector(v)
-        result = vec*mat
-        return Vector(result[1], result[2])

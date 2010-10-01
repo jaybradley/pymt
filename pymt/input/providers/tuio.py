@@ -2,15 +2,15 @@
 Tuio: TUIO input provider implementation
 '''
 
-__all__ = ['TuioTouchProvider', 'Tuio2dCurTouch', 'Tuio2dObjTouch']
+__all__ = ('TuioTouchProvider', 'Tuio2dCurTouch', 'Tuio2dObjTouch')
 
 import osc
 from collections import deque
-from ..provider import TouchProvider
-from ..factory import TouchFactory
-from ..touch import Touch
-from ..shape import TouchShapeRect
-from ...logger import pymt_logger
+from pymt.input.provider import TouchProvider
+from pymt.input.factory import TouchFactory
+from pymt.input.touch import Touch
+from pymt.input.shape import TouchShapeRect
+from pymt.logger import pymt_logger
 
 class TuioTouchProvider(TouchProvider):
     '''Tuio provider listen to a socket, and handle part of OSC message
@@ -103,12 +103,13 @@ class TuioTouchProvider(TouchProvider):
         osc.readQueue(self.oscid)
 
         # read the Queue with event
-        try:
-            while True:
+        while True:
+            try:
                 value = self.tuio_event_q.pop()
-                self._update(dispatch_fn, value)
-        except IndexError:
-            return
+            except IndexError:
+                # queue is empty, we're done for now
+                return
+            self._update(dispatch_fn, value)
 
     def _osc_tuio_cb(self, *incoming):
         message = incoming[0]
@@ -183,6 +184,13 @@ class TuioTouch(Touch):
         self.m = 0.0
         self.r = 0.0
 
+    angle = property(lambda self: self.a)
+    mot_accel = property(lambda self: self.m)
+    rot_accel = property(lambda self: self.r)
+    xmot = property(lambda self: self.X)
+    ymot = property(lambda self: self.Y)
+    zmot = property(lambda self: self.Z)
+
 class Tuio2dCurTouch(TuioTouch):
     '''A 2dCur TUIO touch.'''
     def __init__(self, device, id, args):
@@ -194,9 +202,11 @@ class Tuio2dCurTouch(TuioTouch):
             self.profile = ('pos', )
         elif len(args) == 5:
             self.sx, self.sy, self.X, self.Y, self.m = map(float, args[0:5])
+            self.Y = -self.Y
             self.profile = ('pos', 'mov', 'motacc')
         else:
             self.sx, self.sy, self.X, self.Y, self.m, width, height = map(float, args[0:7])
+            self.Y = -self.Y
             self.profile = ('pos', 'mov', 'motacc', 'shape')
             if self.shape is None:
                 self.shape = TouchShapeRect()
@@ -218,9 +228,11 @@ class Tuio2dObjTouch(TuioTouch):
             self.profile = ('pos', )
         elif len(args) == 9:
             self.fid, self.sx, self.sy, self.a, self.X, self.Y, self.A, self.m, self.r = args[0:9]
+            self.Y = -self.Y
             self.profile = ('markerid', 'pos', 'angle', 'mov', 'rot', 'motacc', 'rotacc')
         else:
             self.fid, self.sx, self.sy, self.a, self.X, self.Y, self.A, self.m, self.r, width, height = args[0:11]
+            self.Y = -self.Y
             self.profile = ('markerid', 'pos', 'angle', 'mov', 'rot', 'rotacc',
                             'acc', 'shape')
             if self.shape is None:
