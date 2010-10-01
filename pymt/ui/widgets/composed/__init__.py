@@ -14,3 +14,4 @@ from pymt.ui.widgets.composed.textarea import *
 from pymt.ui.widgets.composed.popup import *
 from pymt.ui.widgets.composed.filebrowser import *
 from pymt.ui.widgets.composed.vkeyboardspellcheck import *
+from pymt.ui.widgets.composed.proxyPDF import *
